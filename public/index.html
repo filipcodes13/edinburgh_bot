@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asystent Lotniska w Edynburgu</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1 data-key="header_title">Twój Asystent Lotniskowy ✈️</h1>
+                <p data-key="header_subtitle">Witaj na lotnisku w Edynburgu! Zapytaj mnie o cokolwiek.</p>
+            </div>
+            <div class="lang-switcher">
+                <button id="lang-pl" class="active">PL</button>
+                <button id="lang-en">EN</button>
+            </div>
+        </header>
+
+        <main class="app-layout">
+            <section class="chat-section">
+                <h2 data-key="chat_header">Czat</h2>
+                <div class="chat-window">
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="user-input" data-key="input_placeholder" placeholder="Wpisz pytanie, np. 'Gdzie znajdę ładowarki?'">
+                    <button id="send-btn" data-key="send_button">Zapytaj</button>
+                </div>
+            </section>
+
+            <section class="info-section">
+                <h2 data-key="info_header">Dodatkowe Informacje</h2>
+                <div id="info-content">
+                    <p data-key="info_default_text">Tutaj pojawi się źródło odpowiedzi lub wyniki dodatkowych funkcji.</p>
+                </div>
+                 <div id="sdk-demos">
+                    <button id="summarize-btn" data-key="summarize_button">Streszczenie</button>
+                    <button id="translate-btn" data-key="translate_button">Przetłumacz (ENG)</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <footer>
+        <p data-key="footer_text">Stworzone przez: Filip Kołodziejczyk & SilverCoders</p>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+
+
