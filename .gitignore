@@ -5,7 +5,7 @@ node_modules/
 .env
 
 # Wynikowe pliki tekstowe generowane przez Docwire
-airport_docs/
+/airport_docs/
 
 # Pliki systemowe macOS
 .DS_Store
