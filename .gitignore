@@ -1,12 +1,14 @@
-# Ignoruj plik z sekretnymi kluczami
+# Zależności Node.js
+node_modules/
+
+# Pliki środowiskowe
 .env
 
-# Ignoruj pobrane biblioteki
-/node_modules
+# Wynikowe pliki tekstowe generowane przez Docwire
+airport_docs/
 
-# Ignoruj foldery z artefaktami budowania
-/build
-/docwire/build
-
-# Ignoruj pliki systemowe
+# Pliki systemowe macOS
 .DS_Store
+
+# Logi
+*.log
