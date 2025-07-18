@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Asystent Lotniska w Edynburgu</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -14,41 +17,44 @@
                 <p data-key="header_subtitle">Witaj na lotnisku w Edynburgu! Zapytaj mnie o cokolwiek.</p>
             </div>
             <div class="lang-switcher">
-                <button id="lang-pl" class="active">PL</button>
-                <button id="lang-en">EN</button>
+                <button id="lang-pl" data-lang="pl" class="active">PL</button>
+                <button id="lang-en" data-lang="en">EN</button>
             </div>
         </header>
 
         <main class="app-layout">
             <section class="chat-section">
-                <h2 data-key="chat_header">Czat</h2>
-                <div class="chat-window">
-                </div>
-                <div class="chat-input">
-                    <input type="text" id="user-input" data-key="input_placeholder" placeholder="Wpisz pytanie, np. 'Gdzie znajdę ładowarki?'">
-                    <button id="send-btn" data-key="send_button">Zapytaj</button>
+                <h2 class="section-title" data-key="chat_header">Czat</h2>
+                <div class="chat-window" id="chat-window">
+                    </div>
+                <div class="suggestion-chips" id="suggestion-chips-container"></div>
+                <div class="chat-input-area">
+                    <div class="chat-input">
+                        <input type="text" id="user-input" placeholder="Wpisz pytanie..." data-key="input_placeholder">
+                        <button id="send-btn" data-key="send_button">Zapytaj</button>
+                    </div>
                 </div>
             </section>
-
+            
             <section class="info-section">
-                <h2 data-key="info_header">Dodatkowe Informacje</h2>
+                <h2 class="section-title" data-key="info_header">Dodatkowe Informacje</h2>
                 <div id="info-content">
-                    <p data-key="info_default_text">Tutaj pojawi się źródło odpowiedzi lub wyniki dodatkowych funkcji.</p>
+                    <p data-key="info_default_text">Tutaj pojawi się źródło odpowiedzi...</p>
                 </div>
-                 <div id="sdk-demos">
-                    <button id="summarize-btn" data-key="summarize_button">Streszczenie</button>
-                    <button id="translate-btn" data-key="translate_button">Przetłumacz (ENG)</button>
+                <div id="sdk-demos">
+                    <button id="summarize-btn" data-key="summarize_button">Podsumuj źródło</button>
+                    <button id="translate-btn" data-key="translate_button">Przetłumacz źródło</button>
                 </div>
             </section>
         </main>
+        
     </div>
-
-    <footer>
+    <footer class="main-footer">
         <p data-key="footer_text">Stworzone przez: Filip Kołodziejczyk & SilverCoders</p>
     </footer>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </body>
 </html>
-
 

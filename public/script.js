@@ -29,9 +29,8 @@ const translations = {
     "input_placeholder": { pl: "Wpisz pytanie, np. 'Gdzie znajdę ładowarki?'", en: "Type a question, e.g., 'Where can I find chargers?'" },
     "send_button": { pl: "Zapytaj", en: "Ask" },
     "info_header": { pl: "Dodatkowe Informacje", en: "Additional Information" },
-    "info_default_text": { pl: "Tutaj pojawi się źródło odpowiedzi lub wyniki dodatkowych funkcji.", en: "Source of the answer or results of additional functions will appear here." },
-    "summarize_button": { pl: "Podsumuj źródło", en: "Summarize Source" }, // Zmieniono tekst
-    "translate_button": { pl: "Przetłumacz źródło", en: "Translate Source" }, // Zmieniono tekst
+    "summarize_button": { pl: "Podsumuj źródło", en: "Summarize Source" },
+    "translate_button": { pl: "Przetłumacz źródło", en: "Translate Source" },
     "footer_text": { pl: "Stworzone przez: Filip Kołodziejczyk & SilverCoders", en: "Created by: Filip Kołodziejczyk & SilverCoders" },
     "welcome_message": { pl: "Cześć! Jestem nawigatorem po lotnisku w Edynburgu. Zadaj mi pytanie.", en: "Hi! I'm your Edinburgh Airport navigator. Ask me a question." },
     "thinking_message": { pl: "Myślę...", en: "Thinking..." },
@@ -40,6 +39,12 @@ const translations = {
     "no_source_text": { pl: "Brak dodatkowych informacji.", en: "No additional information." },
     "translate_source_button": { pl: "Przetłumacz źródło", en: "Translate source" }
 };
+
+const suggestionChipsData = [
+    { pl: "Gdzie zjem?", en: "Where can I eat?" },
+    { pl: "Jakie są dostępne saloniki?", en: "What lounges are available?" },
+    { pl: "Gdzie są sklepy?", en: "Where are the shops?" }
+];
 
 let currentLang = 'pl';
 let chatHistory = [];
@@ -63,24 +68,29 @@ function setLanguage(lang) {
     chatHistory = [];
     document.querySelector('.chat-window').innerHTML = '';
     appendMessage(translations.welcome_message[currentLang], 'bot-message', 'Asystent');
+    displaySuggestionChips();
 }
 
-async function handleUserInput() {
+async function handleUserInput(questionOverride = null) {
     const inputField = document.getElementById('user-input');
-    const userQuestion = inputField.value.trim().toLowerCase();
+    const userQuestion = questionOverride || inputField.value.trim();
 
     if (!userQuestion) return;
 
-    appendMessage(inputField.value.trim(), 'user-message', 'Ty');
-    inputField.value = '';
+    appendMessage(userQuestion, 'user-message', 'Ty');
+    if (!questionOverride) inputField.value = '';
     
+    hideSuggestionChips();
+
+    const lowerCaseQuestion = userQuestion.toLowerCase();
     for (const talk of smallTalk) {
-        if (talk.triggers.includes(userQuestion)) {
+        if (talk.triggers.includes(lowerCaseQuestion)) {
             appendMessage(talk.response[currentLang], 'bot-message', 'Asystent');
             return;
         }
     }
     
+    showTypingIndicator();
     document.getElementById('info-content').innerHTML = `<p>${translations.thinking_message[currentLang]}</p>`;
     
     chatHistory.push({ role: 'user', parts: [{ text: userQuestion }] });
@@ -103,12 +113,14 @@ async function handleUserInput() {
         const imageUrl = data.imageUrl || null;
         const sourceContext = data.sourceContext || null;
 
+        hideTypingIndicator();
         chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
         
         appendMessage(responseText, 'bot-message', 'Asystent', imageUrl);
         displaySourceContext(sourceContext);
 
     } catch (error) {
+        hideTypingIndicator();
         console.error("Błąd API:", error);
         appendMessage("Przepraszam, mam problem z połączeniem. Spróbuj ponownie.", 'bot-message', 'Asystent');
     }
@@ -139,19 +151,53 @@ function appendMessage(text, className, author, imageUrl = null) {
     chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
+function showTypingIndicator() {
+    const chatWindow = document.querySelector('.chat-window');
+    const indicator = document.createElement('div');
+    indicator.className = 'typing-indicator';
+    indicator.id = 'typing-indicator';
+    indicator.innerHTML = '<span></span><span></span><span></span>';
+    chatWindow.appendChild(indicator);
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+function hideTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) indicator.remove();
+}
+
+function displaySuggestionChips() {
+    const chipsContainer = document.getElementById('suggestion-chips-container');
+    chipsContainer.innerHTML = '';
+    suggestionChipsData.forEach(chipData => {
+        const chip = document.createElement('button');
+        chip.className = 'suggestion-chip';
+        chip.textContent = chipData[currentLang];
+        chip.addEventListener('click', () => {
+            handleUserInput(chipData[currentLang]);
+        });
+        chipsContainer.appendChild(chip);
+    });
+}
+
+function hideSuggestionChips() {
+    const chipsContainer = document.getElementById('suggestion-chips-container');
+    chipsContainer.innerHTML = '';
+}
+
 function displaySourceContext(context) {
     const infoContentDiv = document.getElementById('info-content');
     const sdkDemos = document.getElementById('sdk-demos');
     
     if (context && context.text_chunk) {
-        sdkDemos.style.display = 'flex'; // Pokaż przyciski
+        sdkDemos.style.display = 'flex';
         infoContentDiv.innerHTML = `
             <h4 data-key="source_header">${translations.source_header[currentLang]}</h4>
             <p><strong><span data-key="source_file">${translations.source_file[currentLang]}</span>:</strong> ${context.filename}</p>
             <blockquote>${context.text_chunk}</blockquote>
         `;
     } else {
-        sdkDemos.style.display = 'none'; // Ukryj przyciski, jeśli nie ma źródła
+        sdkDemos.style.display = 'none';
         infoContentDiv.innerHTML = `<p>${translations.no_source_text[currentLang]}</p>`;
     }
 }
@@ -166,16 +212,13 @@ document.addEventListener('DOMContentLoaded', () => {
     setLanguage(currentLang);
 
     if (sendButton && inputField) {
-        sendButton.addEventListener('click', handleUserInput);
+        sendButton.addEventListener('click', () => handleUserInput());
         inputField.addEventListener('keypress', (e) => e.key === 'Enter' && handleUserInput());
     }
     
-    appendMessage(translations.welcome_message[currentLang], 'bot-message', 'Asystent');
-
     document.getElementById('lang-pl').addEventListener('click', () => setLanguage('pl'));
     document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
 
-    // --- NOWA, POPRAWIONA LOGIKA PRZYCISKÓW ---
     if (summarizeButton) {
         summarizeButton.addEventListener('click', async () => {
             const blockquote = infoContentDiv.querySelector('blockquote');
