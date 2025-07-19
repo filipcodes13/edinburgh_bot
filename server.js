@@ -108,6 +108,39 @@ app.post('/api/ask', async (req, res) => {
 });
 
 
+app.post('/api/summarize', async (req, res) => {
+    const { text } = req.body;
+    if (!text) {
+        return res.status(400).json({ error: 'Brak tekstu do podsumowania.' });
+    }
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+        const prompt = `Summarize the following text in one or two concise Polish sentences. Output only the summary. The text to summarize is: "${text}"`;
+        const result = await model.generateContent(prompt);
+        res.json({ summary: result.response.text().trim() });
+    } catch (error) {
+        console.error('[Backend] Błąd podczas podsumowania:', error);
+        res.status(500).json({ error: 'Wystąpił błąd podczas podsumowania.' });
+    }
+});
+
+app.post('/api/translate', async (req, res) => {
+    const { text } = req.body;
+    if (!text) {
+        return res.status(400).json({ error: 'Brak tekstu do tłumaczenia.' });
+    }
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+        const prompt = `Translate the following text to English. Output only the translated text. The text to translate is: "${text}"`;
+        const result = await model.generateContent(prompt);
+        res.json({ translatedText: result.response.text().trim() });
+    } catch (error) {
+        console.error('[Backend] Błąd podczas tłumaczenia:', error);
+        res.status(500).json({ error: 'Wystąpił błąd podczas tłumaczenia.' });
+    }
+});
+
+
 app.listen(port, () => {
     console.log(`Serwer AI Airport Navigator działa na porcie: ${port}`);
 });
