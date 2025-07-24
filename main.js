@@ -1,4 +1,3 @@
-// main.js - Główny plik startowy dla aplikacji Electron
 
 const { app, BrowserWindow } = require('electron');
 const path = require('path');

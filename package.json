@@ -2,9 +2,10 @@
   "name": "airport_navigator",
   "version": "1.0.0",
   "description": "AI assistant for Edinburgh Airport",
-  "main": "server.js",
+  "main": "main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:desktop": "electron ."
   },
   "repository": {
     "type": "git",
@@ -30,5 +31,7 @@
     "dotenv": "^17.2.0",
     "express": "^5.1.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "electron": "^31.0.2"
+  }
 }
