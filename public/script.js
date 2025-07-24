@@ -1,24 +1,25 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Dane statyczne i tłumaczenia ---
     const smallTalk = [
         {
             triggers: ["hej", "czesc", "cześć", "siema", "witaj", "dzien dobry", "dzień dobry"],
             response: {
-                pl: "Cześć! W czym mogę Ci dzisiaj pomóc?",
-                en: "Hello! How can I help you today?"
+                pl: "Cześć! W czym mogę Ci dzisiaj pomóc? 👋",
+                en: "Hello! How can I help you today? 👋"
             }
         },
         {
             triggers: ["dzięki", "dzieki", "dziękuję", "dziekuje", "super"],
             response: {
-                pl: "Nie ma za co! Cieszę się, że mogłem pomóc. Czy jest coś jeszcze, co chciałbyś wiedzieć?",
-                en: "You're welcome! I'm glad I could help. Is there anything else you'd like to know?"
+                pl: "Nie ma za co! Cieszę się, że mogłem pomóc. 😊 Czy jest coś jeszcze, co chciałbyś wiedzieć?",
+                en: "You're welcome! I'm glad I could help. 😊 Is there anything else you'd like to know?"
             }
         },
         {
             triggers: ["pa", "do widzenia", "na razie"],
             response: {
-                pl: "Do zobaczenia! Miłej podróży!",
-                en: "Goodbye! Have a great trip!"
+                pl: "Do zobaczenia! Miłej podróży! 👋",
+                en: "Goodbye! Have a great trip! 👋"
             }
         }
     ];
@@ -33,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "summarize_button": { pl: "Podsumuj źródło", en: "Summarize Source" },
         "translate_button": { pl: "Przetłumacz źródło", en: "Translate Source" },
         "footer_text": { pl: "Stworzone przez: Filip Kołodziejczyk & SilverCoders", en: "Created by: Filip Kołodziejczyk & SilverCoders" },
-        "welcome_message": { pl: "Cześć! Jestem nawigatorem po lotnisku w Edynburgu. Zadaj mi pytanie.", en: "Hi! I'm your Edinburgh Airport navigator. Ask me a question." },
+        "welcome_message": { pl: "Cześć! Jestem Twoim asystentem na lotnisku w Edynburgu. Zadaj mi pytanie. 😊", en: "Hi! I'm your Edinburgh Airport navigator. Ask me a question. 😊" },
         "thinking_message": { pl: "Myślę...", en: "Thinking..." },
         "source_header": { pl: "Źródło Odpowiedzi", en: "Answer Source" },
         "source_file": { pl: "Plik", en: "File" },
@@ -41,12 +42,15 @@ document.addEventListener('DOMContentLoaded', () => {
         "no_source_to_action": { pl: "Brak źródła do wykonania akcji.", en: "No source to perform action on." },
         "summary_header": { pl: "Streszczenie", en: "Summary" },
         "translation_header": { pl: "Tłumaczenie (EN)", en: "Translation (EN)" },
-        "error_text": { pl: "Błąd", en: "Error" }
+        "error_text": { pl: "Błąd", en: "Error" },
+        "reading_time_button": { pl: "Oblicz czas czytania", en: "Calculate Reading Time" },
+        "reading_time_result": { pl: "Szacowany czas czytania", en: "Estimated reading time" },
+        "reading_time_unit": { pl: "min", en: "min" }
     };
 
     const suggestionChipsData = [
         { pl: "Gdzie zjem?", en: "Where can I eat?" },
-        { pl: "Jakie są dostępne saloniki?", en: "What lounges are available?" },
+        { pl: "Jak znaleźć moją bramkę?", en: "How to find my gate?" },
         { pl: "Playlista pop", en: "Pop playlist" }
     ];
 
@@ -60,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sdkDemos = document.getElementById('sdk-demos');
     const summarizeButton = document.getElementById('summarize-btn');
     const translateButton = document.getElementById('translate-btn');
-
+    const readingTimeButton = document.getElementById('reading-time-btn');
 
     function setLanguage(lang) {
         currentLang = lang;
@@ -198,16 +202,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function parseMarkdownLinks(text) {
+        const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+        return text.replace(linkRegex, '<a href="$2" target="_blank">$1</a>');
+    }
 
     function appendMessage(text, className, author, imageUrl = null) {
         const messageContainer = document.createElement('div');
         messageContainer.className = `chat-message ${className}`;
         
         const textElement = document.createElement('p');
-        const authorStrong = document.createElement('strong');
-        authorStrong.innerText = `${author}: `;
-        textElement.appendChild(authorStrong);
-        textElement.append(text);
+        textElement.innerHTML = `<strong>${author}: </strong> ${parseMarkdownLinks(text)}`;
         
         messageContainer.appendChild(textElement);
 
@@ -384,6 +389,40 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 translateButton.textContent = originalButtonText;
                 translateButton.disabled = false;
+            }
+        });
+    }
+
+    if (readingTimeButton) {
+        readingTimeButton.addEventListener('click', async () => {
+            const blockquote = infoContentDiv.querySelector('blockquote');
+            if (!blockquote || !blockquote.innerText) {
+                displayActionResult('error_text', translations.no_source_to_action[currentLang]);
+                return;
+            }
+            const textToProcess = blockquote.innerText;
+
+            const originalButtonText = readingTimeButton.textContent;
+            readingTimeButton.textContent = translations.thinking_message[currentLang];
+            readingTimeButton.disabled = true;
+            
+            try {
+                const response = await fetch('/api/reading-time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: textToProcess })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                
+                const resultText = `${data.readingTime} ${translations.reading_time_unit[currentLang]}`;
+                displayActionResult('reading_time_result', resultText);
+
+            } catch (error) {
+                displayActionResult('error_text', error.message);
+            } finally {
+                readingTimeButton.textContent = originalButtonText;
+                readingTimeButton.disabled = false;
             }
         });
     }
