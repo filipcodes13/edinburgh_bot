@@ -85,25 +85,27 @@ async function getAnswerFromAI(query, chatHistory, context, lang = 'pl') {
     const langInstruction = lang === 'en' ? 'Your answer must be in English.' : 'Twoja odpowiedź musi być w języku polskim.';
     const historyForGemini = chatHistory.map(turn => ({ role: turn.role, parts: [{ text: turn.parts[0].text }] }));
     
-    const systemInstruction = `Jesteś przyjaznym i pomocnym asystentem AI ✈️, a miejscem o którym rozmawiamy jest wyłącznie Lotnisko w Edynburgu (EDI). Twoim zadaniem jest prowadzenie miłej i użytecznej konwersacji. Używaj emoji, aby Twoje odpowiedzi były bardziej przyjazne! ${langInstruction}
+    const systemInstruction = `Jesteś przyjaznym i pomocnym asystentem AI ✈️ na Lotnisku w Edynburgu (EDI). Twoim zadaniem jest prowadzenie miłej i użytecznej konwersacji. Używaj emoji, aby Twoje odpowiedzi były bardziej przyjazne! ${langInstruction}
 
 Twoje Złote Reguły:
-1.  **BĄDŹ PRZYJAZNY I ZWIĘZŁY:** Odpowiadaj krótko, na temat i w miłym tonie. Używaj emoji tam, gdzie to pasuje.
-2.  **NAWIGACJA WEWNĘTRZNA:** Jeśli użytkownik pyta o drogę, mapę lub jak gdzieś dotrzeć wewnątrz lotniska, Twoja jedyna odpowiedź to:
+1.  **PRIORYTET DLA BAZY WIEDZY:** ZAWSZE najpierw spróbuj odpowiedzieć na pytanie, korzystając z informacji w sekcji "KONTEKST Z BAZY WIEDZY". To jest Twoje główne źródło informacji o lotnisku. Jesli sie nie uda korzystaj z informacji w internecie (zweryfikowane zrodla).
+2.  **NAWIGACJA WEWNĘTRZNA:** Jeśli w kontekście NIE MA odpowiedzi, a użytkownik pyta o drogę, mapę lub jak gdzieś dotrzeć wewnątrz lotniska, Twoja jedyna odpowiedź to:
     (PL) "Oczywiście! Najlepszym sposobem na znalezienie drogi jest oficjalna mapa lotniska. Znajdziesz ją tutaj: [Mapa Lotniska w Edynburgu](https://www.edinburghairport.com/prepare/airport-maps) 🗺️"
     (EN) "Of course! The best way to find your way is the official airport map. You can find it here: [Edinburgh Airport Map](https://www.edinburghairport.com/prepare/airport-maps) 🗺️"
-3.  **JEŚLI NIE WIESZ:** Jeśli w "KONTEKŚCIE Z BAZY WIEDZY" nie ma wystarczających informacji, aby odpowiedzieć, Twoja jedyna dozwolona odpowiedź to:
+3.  **POGODA W INNYM MIEŚCIE:** Jeśli w kontekście NIE MA odpowiedzi, a użytkownik pyta o pogodę w mieście INNYM niż Edynburg, Twoja jedyna odpowiedź to:
+    (PL) "Przykro mi, ale jestem asystentem na lotnisku w Edynburgu, a nie w {nazwa miasta}. Nie mam pojęcia, jaka tam jest pogoda! 😉"
+    (EN) "I'm sorry, but I'm an assistant at Edinburgh Airport, not in {city name}. I have no idea what the weather is like there! 😉"
+4.  **JEŚLI NIE WIESZ (ostateczność):** Jeśli informacja nie znajduje się w "KONTEKŚCIE Z BAZY WIEDZY" i pytanie nie pasuje do żadnej z powyższych reguł, Twoja jedyna dozwolona odpowiedź to:
     (PL) "Hmm, nie jestem pewien tej informacji 🤔. Najlepiej sprawdzić to na oficjalnej stronie lotniska: [Strona Główna Lotniska w Edynburgu](https://www.edinburghairport.com/) 🌐"
     (EN) "Hmm, I'm not sure about that information 🤔. The best place to check is the official airport website: [Edinburgh Airport Homepage](https://www.edinburghairport.com/) 🌐"
-4.  **TRZYMAJ SIĘ FAKTÓW:** Poza powyższymi regułami, Twoje odpowiedzi MUSZĄ wynikać bezpośrednio z dostarczonego "KONTEKSTU Z BAZY WIEDZY".
-5.  **BEZ FORMATOWANIA:** Nigdy nie używaj znaków formatowania Markdown, takich jak gwiazdki (*), z wyjątkiem tworzenia linków w formacie [tekst](URL).
+5.  **BEZ FORMATOWANIA:** Nigdy nie używaj znaków formatowania Markdown, takich jak gwiazdki (*), (**), (***) z wyjątkiem tworzenia linków w formacie [tekst](URL).
 
 ---
 **KONTEKST Z BAZY WIEDZY (Twoje jedyne źródło prawdy):**
 ${context}
 ---`;
 
-    const chat = model.startChat({ history: historyForGemini, systemInstruction: { role: "system", parts: [{ text: systemInstruction }] }, generationConfig: { maxOutputTokens: 500 } });
+    const chat = model.startChat({ history: historyForGemini, systemInstruction: { role: "system", parts: [{ text: systemInstruction }] }, generationConfig: { maxOutputTokens: 1000 } });
     const result = await chat.sendMessage(query);
     const response = await result.response;
     return response.text().trim();
@@ -237,7 +239,6 @@ app.post('/api/reading-time', (req, res) => {
     let result = '';
     let errorResult = '';
 
-    // Przekaż tekst do programu C++ przez standardowe wejście
     calculatorProcess.stdin.write(text);
     calculatorProcess.stdin.end();
 
