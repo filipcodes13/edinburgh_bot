@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios'); 
+const axios = require('axios');
 const { Pinecone } = require('@pinecone-database/pinecone');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
@@ -80,12 +80,29 @@ loadRates();
 
 
 
-
 async function getAnswerFromAI(query, chatHistory, context, lang = 'pl') {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
     const langInstruction = lang === 'en' ? 'Your answer must be in English.' : 'Twoja odpowiedź musi być w języku polskim.';
     const historyForGemini = chatHistory.map(turn => ({ role: turn.role, parts: [{ text: turn.parts[0].text }] }));
-    const systemInstruction = `Jesteś inteligentnym asystentem lotniska w Edynburgu (EDI)...`; 
+    
+    const systemInstruction = `Jesteś przyjaznym i pomocnym asystentem AI ✈️, a miejscem o którym rozmawiamy jest wyłącznie Lotnisko w Edynburgu (EDI). Twoim zadaniem jest prowadzenie miłej i użytecznej konwersacji. Używaj emoji, aby Twoje odpowiedzi były bardziej przyjazne! ${langInstruction}
+
+Twoje Złote Reguły:
+1.  **BĄDŹ PRZYJAZNY I ZWIĘZŁY:** Odpowiadaj krótko, na temat i w miłym tonie. Używaj emoji tam, gdzie to pasuje.
+2.  **NAWIGACJA WEWNĘTRZNA:** Jeśli użytkownik pyta o drogę, mapę lub jak gdzieś dotrzeć wewnątrz lotniska, Twoja jedyna odpowiedź to:
+    (PL) "Oczywiście! Najlepszym sposobem na znalezienie drogi jest oficjalna mapa lotniska. Znajdziesz ją tutaj: [Mapa Lotniska w Edynburgu](https://www.edinburghairport.com/prepare/airport-maps) 🗺️"
+    (EN) "Of course! The best way to find your way is the official airport map. You can find it here: [Edinburgh Airport Map](https://www.edinburghairport.com/prepare/airport-maps) 🗺️"
+3.  **JEŚLI NIE WIESZ:** Jeśli w "KONTEKŚCIE Z BAZY WIEDZY" nie ma wystarczających informacji, aby odpowiedzieć, Twoja jedyna dozwolona odpowiedź to:
+    (PL) "Hmm, nie jestem pewien tej informacji 🤔. Najlepiej sprawdzić to na oficjalnej stronie lotniska: [Strona Główna Lotniska w Edynburgu](https://www.edinburghairport.com/) 🌐"
+    (EN) "Hmm, I'm not sure about that information 🤔. The best place to check is the official airport website: [Edinburgh Airport Homepage](https://www.edinburghairport.com/) 🌐"
+4.  **TRZYMAJ SIĘ FAKTÓW:** Poza powyższymi regułami, Twoje odpowiedzi MUSZĄ wynikać bezpośrednio z dostarczonego "KONTEKSTU Z BAZY WIEDZY".
+5.  **BEZ FORMATOWANIA:** Nigdy nie używaj znaków formatowania Markdown, takich jak gwiazdki (*), z wyjątkiem tworzenia linków w formacie [tekst](URL).
+
+---
+**KONTEKST Z BAZY WIEDZY (Twoje jedyne źródło prawdy):**
+${context}
+---`;
+
     const chat = model.startChat({ history: historyForGemini, systemInstruction: { role: "system", parts: [{ text: systemInstruction }] }, generationConfig: { maxOutputTokens: 500 } });
     const result = await chat.sendMessage(query);
     const response = await result.response;
@@ -110,7 +127,6 @@ function findContextImage(query) {
     }
     return null;
 }
-
 
 
 app.post('/api/ask', async (req, res) => {
@@ -205,6 +221,42 @@ app.post('/api/translate', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Wystąpił błąd podczas tłumaczenia.' });
     }
+});
+
+const { spawn } = require('child_process'); 
+
+app.post('/api/reading-time', (req, res) => {
+    const { text } = req.body;
+    if (!text) {
+        return res.status(400).json({ error: 'Brak tekstu do analizy.' });
+    }
+
+    const calculatorPath = path.join(__dirname, 'cpp_tools', 'reading_time_calculator');
+    const calculatorProcess = spawn(calculatorPath);
+
+    let result = '';
+    let errorResult = '';
+
+    // Przekaż tekst do programu C++ przez standardowe wejście
+    calculatorProcess.stdin.write(text);
+    calculatorProcess.stdin.end();
+
+    calculatorProcess.stdout.on('data', (data) => {
+        result += data.toString();
+    });
+
+    calculatorProcess.stderr.on('data', (data) => {
+        errorResult += data.toString();
+    });
+
+    calculatorProcess.on('close', (code) => {
+        if (code === 0) {
+            res.json({ readingTime: parseInt(result.trim(), 10) });
+        } else {
+            console.error(`Błąd programu C++ (reading-time): ${errorResult}`);
+            res.status(500).json({ error: 'Błąd podczas obliczania czasu czytania.', details: errorResult.trim() });
+        }
+    });
 });
 
 app.listen(port, () => {
