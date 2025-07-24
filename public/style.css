@@ -1,3 +1,4 @@
+
 :root {
     --background-color: #121212;
     --card-bg: #1E1E1E;
@@ -23,7 +24,7 @@ body {
     min-height: 100vh;
 }
 
-.container {
+.main-container {
     width: 100%;
     max-width: 1200px;
     background: var(--card-bg);
@@ -34,7 +35,7 @@ body {
     border: 1px solid var(--border-color);
 }
 
-header {
+.app-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -43,20 +44,20 @@ header {
     margin-bottom: 30px;
 }
 
-header h1 {
+.app-header h1 {
     color: var(--text-color);
     margin: 0;
     font-size: 24px;
     font-weight: 700;
 }
 
-header p {
+.app-header p {
     margin: 5px 0 0;
     color: var(--text-secondary-color);
     font-size: 16px;
 }
 
-.lang-switcher {
+.lang-selector {
     display: flex;
     gap: 5px;
     background-color: var(--bot-msg-bg);
@@ -64,7 +65,7 @@ header p {
     border-radius: 10px;
 }
 
-.lang-switcher button {
+.lang-selector button {
     background-color: transparent;
     border: none;
     color: var(--text-secondary-color);
@@ -75,30 +76,32 @@ header p {
     transition: background-color 0.2s, color 0.2s;
 }
 
-.lang-switcher button.active {
+.lang-selector button.active {
     background-color: var(--primary-color);
     color: white;
 }
 
-.app-layout {
+.content-wrapper {
     display: flex;
     gap: 40px;
 }
 
-.chat-section, .info-section {
+.chat-panel, .info-panel {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
 }
 
-.chat-section h2, .info-section h2 {
+.panel-header h3 { 
     color: var(--text-secondary-color);
     font-size: 12px;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
 }
 
 .chat-window {
@@ -172,7 +175,7 @@ header p {
     }
 }
 
-.suggestion-chips {
+.suggestion-chips-container {
     padding: 10px 0;
     display: flex;
     flex-wrap: wrap;
@@ -198,9 +201,6 @@ header p {
 
 .chat-input-area {
     margin-top: 15px;
-}
-
-.chat-input {
     display: flex;
     gap: 10px;
 }
@@ -236,7 +236,7 @@ header p {
     transform: scale(1.03);
 }
 
-#info-content {
+.info-content {
     background-color: rgba(0,0,0,0.15);
     border: 1px solid var(--border-color);
     border-radius: 12px;
@@ -246,13 +246,13 @@ header p {
     font-size: 15px;
 }
 
-#info-content h4 {
+.info-content h4 {
     margin-top: 0;
     color: var(--text-secondary-color);
     font-weight: 500;
 }
 
-#info-content blockquote {
+.info-content blockquote {
     border-left: 3px solid var(--primary-color);
     padding-left: 15px;
     margin-left: 0;
@@ -260,30 +260,13 @@ header p {
     color: var(--text-secondary-color);
 }
 
-#info-content .translate-source-btn {
-    background: none;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary-color);
-    padding: 4px 8px;
-    font-size: 10px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-left: 10px;
-    vertical-align: middle;
-}
-
-#info-content .translate-source-btn:hover {
-    background-color: var(--border-color);
-    color: var(--text-color);
-}
-
-#sdk-demos {
+.sdk-demos {
     margin-top: 20px;
     display: flex;
     gap: 10px;
 }
 
-#sdk-demos button {
+.sdk-demos button {
     background-color: transparent;
     color: var(--text-secondary-color);
     border: 1px solid var(--border-color);
@@ -293,22 +276,22 @@ header p {
     transition: background-color 0.2s, color 0.2s;
 }
 
-#sdk-demos button:hover {
+.sdk-demos button:hover {
     background-color: var(--bot-msg-bg);
     color: var(--text-color);
 }
 
-footer {
+.app-footer {
     width: 100%;
     max-width: 1200px;
     text-align: center;
     padding: 10px 0;
     color: var(--text-secondary-color);
     font-size: 12px;
-}
+    margin: 0 auto; 
 
 @media (max-width: 992px) {
-    .app-layout {
+    .content-wrapper {
         flex-direction: column;
         gap: 30px;
     }
@@ -318,28 +301,33 @@ footer {
     body {
         padding: 20px 12px;
     }
-    .container {
+    .main-container {
         padding: 24px 20px;
     }
-    header {
+    .app-header {
         flex-direction: column;
         align-items: flex-start;
         gap: 15px;
     }
-    header h1 {
+    .app-header h1 {
         font-size: 20px;
     }
-    header p {
+    .app-header p {
         font-size: 14px;
     }
     .chat-window {
         height: 50vh;
     }
-    .chat-input {
+    .chat-input-area {
         flex-direction: column;
         gap: 15px;
     }
     #send-btn {
         padding: 16px;
+        width: 100%;
     }
+}
+
+.spotify-embed-container {
+    margin-top: 10px;
 }

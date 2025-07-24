@@ -3,10 +3,12 @@
     "@google-cloud/aiplatform": "^4.3.0",
     "@google/generative-ai": "^0.24.1",
     "@pinecone-database/pinecone": "^6.1.1",
-    "@supabase/supabase-js": "^2.50.3",
+    "@supabase/supabase-js": "^2.52.0",
+    "axios": "^1.11.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
+    "node-addon-api": "^8.5.0",
     "node-fetch": "^3.3.2",
     "openai": "^5.8.3"
   },
@@ -14,11 +16,11 @@
   "version": "1.0.0",
   "description": "",
   "main": "upload-data.js",
-"scripts": {
-  "start": "node server.js",
-  "test": "echo \"Error: no test specified\" && exit 1"
-},
-
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "cmake-js rebuild"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/filipcodes13/Al-Airport-Navigator.git"
@@ -29,5 +31,8 @@
   "bugs": {
     "url": "https://github.com/filipcodes13/Al-Airport-Navigator/issues"
   },
-  "homepage": "https://github.com/filipcodes13/Al-Airport-Navigator#readme"
+  "homepage": "https://github.com/filipcodes13/Al-Airport-Navigator#readme",
+  "devDependencies": {
+    "cmake-js": "^7.3.1"
+  }
 }

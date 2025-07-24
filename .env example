@@ -1,5 +1,0 @@
-SUPABASE_URL=twoj_supabase_url
-SUPABASE_SERVICE_KEY=twoj_supabase_service_key_tutaj
-PINECONE_API_KEY=twoj_pinecone_api_key_tutaj
-GOOGLE_API_KEY=twoj_google_cloud_api_key_tutaj
-GOOGLE_PROJECT_ID=twoj_google_cloud_project_id_tutaj

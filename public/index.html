@@ -3,58 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asystent Lotniska w Edynburgu</title>
-    <link rel="stylesheet" href="style.css">
+    <title>AI Airport Navigator</title>
+    <link rel="stylesheet" href="/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="header-content">
+
+    <div class="main-container">
+        <header class="app-header">
+            <div>
                 <h1 data-key="header_title">Twój Asystent Lotniskowy ✈️</h1>
                 <p data-key="header_subtitle">Witaj na lotnisku w Edynburgu! Zapytaj mnie o cokolwiek.</p>
             </div>
-            <div class="lang-switcher">
-                <button id="lang-pl" data-lang="pl" class="active">PL</button>
-                <button id="lang-en" data-lang="en">EN</button>
+            <div class="lang-selector">
+                <button id="lang-pl" class="active">PL</button>
+                <button id="lang-en">EN</button>
             </div>
         </header>
 
-        <main class="app-layout">
-            <section class="chat-section">
-                <h2 class="section-title" data-key="chat_header">Czat</h2>
+        <main class="content-wrapper">
+
+            <div class="chat-panel">
+                <div class="panel-header">
+                    <h3 data-key="chat_header">Czat</h3>
+                </div>
                 <div class="chat-window" id="chat-window">
                     </div>
-                <div class="suggestion-chips" id="suggestion-chips-container"></div>
-                <div class="chat-input-area">
-                    <div class="chat-input">
-                        <input type="text" id="user-input" placeholder="Wpisz pytanie..." data-key="input_placeholder">
-                        <button id="send-btn" data-key="send_button">Zapytaj</button>
+                <div class="suggestion-chips-container" id="suggestion-chips-container">
                     </div>
+                <div class="chat-input-area">
+                    <input type="text" id="user-input" data-key="input_placeholder" placeholder="Wpisz pytanie, np. 'Gdzie znajdę ładowarki?'" autocomplete="off">
+                    <button id="send-btn" data-key="send_button">Zapytaj</button>
                 </div>
-            </section>
-            
-            <section class="info-section">
-                <h2 class="section-title" data-key="info_header">Dodatkowe Informacje</h2>
-                <div id="info-content">
-                    <p data-key="info_default_text">Tutaj pojawi się źródło odpowiedzi...</p>
+            </div>
+
+            <div class="info-panel">
+                <div class="panel-header">
+                    <h3 data-key="info_header">Dodatkowe Informacje</h3>
                 </div>
-                <div id="sdk-demos">
+                <div class="info-content" id="info-content">
+                    <p data-key="no_source_text">Brak dodatkowych informacji.</p>
+                </div>
+                <div class="sdk-demos" id="sdk-demos" style="display: none;">
                     <button id="summarize-btn" data-key="summarize_button">Podsumuj źródło</button>
                     <button id="translate-btn" data-key="translate_button">Przetłumacz źródło</button>
                 </div>
-            </section>
+            </div>
+
         </main>
         
+        <footer class="app-footer">
+            <p data-key="footer_text">Stworzone przez: Filip Kołodziejczyk & SilverCoders</p>
+        </footer>
     </div>
-    <footer class="main-footer">
-        <p data-key="footer_text">Stworzone przez: Filip Kołodziejczyk & SilverCoders</p>
-    </footer>
-    <script src="script.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="/script.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </body>
 </html>
-
