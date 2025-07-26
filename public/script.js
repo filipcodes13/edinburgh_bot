@@ -105,9 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         hideSuggestionChips();
         const lowerCaseQuestion = userQuestion.toLowerCase();
-
+        
+        const wordsInQuestion = lowerCaseQuestion.replace(/[^\w\s]/g, '').split(/\s+/);
         for (const talk of smallTalk) {
-            if (talk.triggers.some(trigger => lowerCaseQuestion.includes(trigger))) {
+            if (talk.triggers.some(trigger => wordsInQuestion.includes(trigger))) {
                 appendMessage(talk.response[currentLang], 'bot-message', 'Asystent');
                 displayDefaultSuggestionChips();
                 return;
@@ -199,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (data.action === 'show_navigation_modal') {
                     showNavigationModal(data.imageUrl, data.answer);
+                    displayDefaultSuggestionChips();
                 } else {
                     const responseText = data.answer || "Przepraszam, wystąpił błąd.";
                     chatHistory.push({ role: 'model', parts: [{ text: responseText }] });

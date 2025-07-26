@@ -23,7 +23,7 @@
     },
     {
       "name": "WHSmith (przed kontrolą)",
-      "aliases": ["whsmith", "księgarnia", "gazety"],
+      "aliases": ["whsmith przed kontrolą", "księgarnia", "gazety"],
       "zone": "before_security",
       "map_file": "images/mapa_przed_kontrola.jpg",
       "details": "Sklep WHSmith (nr 7 i 12) znajduje się w strefie przed kontrolą bezpieczeństwa."
@@ -55,6 +55,13 @@
       "zone": "before_security",
       "map_file": "images/mapa_przed_kontrola.jpg",
       "details": "Recepcja dla osób wymagających specjalnej asysty (nr 6) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Toalety (przed kontrolą)",
+      "aliases": ["toalety", "toaleta", "łazienka", "wc"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Toalety znajdują się w kilku miejscach przed kontrolą bezpieczeństwa, m.in. w pobliżu stref odpraw i w hali przylotów."
     },
     {
       "name": "Kontrola Bezpieczeństwa",
@@ -195,12 +202,21 @@
       "zone": "after_security",
       "map_file": "images/mapa_po_kontroli.jpg",
       "details": "Salonik Plaza Premium Lounge znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Toalety (po kontroli)",
+      "aliases": ["toalety", "toaleta", "łazienka", "wc"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Toalety znajdują się w wielu miejscach po kontroli bezpieczeństwa, zazwyczaj w pobliżu bramek i stref gastronomicznych."
     }
   ],
   "user_locations": {
       "przed kontrolą": "before_security",
+      "przed": "before_security",
       "before security": "before_security",
       "po kontroli": "after_security",
+      "po": "after_security",
       "after security": "after_security",
       "przy bramce": "after_security",
       "at the gate": "after_security"

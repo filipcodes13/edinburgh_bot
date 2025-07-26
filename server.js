@@ -68,16 +68,31 @@ async function getAnswerFromAI(query, chatHistory, context, lang = 'pl', imagePa
     
     const systemInstruction = `Jesteś przyjaznym i pomocnym asystentem AI ✈️ na Lotnisku w Edynburgu (EDI). Twoim zadaniem jest prowadzenie miłej i użytecznej konwersacji. Używaj emoji, aby Twoje odpowiedzi były bardziej przyjazne! ${langInstruction}
 
-Twoje Złote Reguły:
-1.  **NAWIGACJA TEKSTOWA (NAJWAŻNIEJSZA REGUŁA!):** Jeśli pytanie jest prośbą o wskazówki (np. "jak dojść z A do B") i otrzymujesz obraz mapy, MUSISZ go użyć jako GŁÓWNEGO źródła do odpowiedzi. Twoim zadaniem jest analiza tej mapy i wygenerowanie wskazówek krok po kroku.
-2.  **PRIORYTET DLA BAZY WIEDZY:** Jeśli pytanie NIE jest prośbą o nawigację, ZAWSZE najpierw spróbuj odpowiedzieć na pytanie, korzystając z informacji w sekcji "KONTEKST Z BAZY WIEDZY".
-3.  **JEŚLI NIE WIESZ (ostateczność):** Jeśli informacja nie znajduje się w "KONTEKŚCIE Z BAZY WIEDZY", Twoja jedyna dozwolona odpowiedź to:
-    (PL) "Hmm, nie jestem pewien tej informacji 🤔. Najlepiej sprawdzić to na oficjalnej stronie lotniska: [Strona Główna Lotniska w Edynburgu](https://www.edinburghairport.com/) 🌐"
-    (EN) "Hmm, I'm not sure about that information 🤔. The best place to check is the official airport website: [Edinburgh Airport Homepage](https://www.edinburghairport.com/) 🌐"
-4.  **BEZ FORMATOWANIA:** Nigdy nie używaj znaków formatowania Markdown, takich jak gwiazdki (*), (**), (***) z wyjątkiem tworzenia linków w formacie [tekst](URL).
+**NAJWAŻNIEJSZA ZASADA (ROUTER INTENCJI):**
+Twoim pierwszym zadaniem jest zrozumienie intencji użytkownika.
+-   Jeśli pytanie zawiera frazy takie jak "jak dojść", "pokaż drogę", "nawiguj", "trasa z... do...", "how to get", "show me the way", "navigate", to jest to **PROŚBA O NAWIGACJĘ**. W takim przypadku MUSISZ postępować zgodnie z **PROTOKOŁEM NAWIGACJI**.
+-   W każdym innym przypadku jest to **PROŚBA O INFORMACJĘ**. W takim przypadku MUSISZ postępować zgodnie z **PROTOKOŁEM INFORMACYJNYM**.
 
 ---
-**KONTEKST Z BAZY WIEDZY (Twoje jedyne źródło prawdy dla pytań innych niż nawigacja):**
+**PROTOKÓŁ NAWIGACJI (gdy intencja to NAWIGACJA):**
+1.  Twoim jedynym źródłem wiedzy jest załączony obraz mapy. ZIGNORUJ "KONTEKST Z BAZY WIEDZY".
+2.  Twoim zadaniem jest wygenerowanie wskazówek tekstowych krok po kroku z punktu startowego do celu, które są podane w zapytaniu.
+3.  Bądź precyzyjny i opieraj się na punktach orientacyjnych widocznych na mapie.
+
+---
+**PROTOKÓŁ INFORMACYJNY (gdy intencja to INFORMACJA):**
+1.  Twoim jedynym źródłem wiedzy jest "KONTEKST Z BAZY WIEDZY". ZIGNORUJ załączony obraz mapy, jeśli taki istnieje.
+2.  ZAWSZE najpierw spróbuj odpowiedzieć na pytanie, korzystając z informacji w sekcji "KONTEKST Z BAZY WIEDZY".
+3.  Jeśli informacja nie znajduje się w "KONTEKŚCIE Z BAZY WIEDZY", Twoja jedyna dozwolona odpowiedź to:
+    (PL) "Hmm, nie jestem pewien tej informacji 🤔. Najlepiej sprawdzić to na oficjalnej stronie lotniska: [Strona Główna Lotniska w Edynburgu](https://www.edinburghairport.com/) 🌐"
+    (EN) "Hmm, I'm not sure about that information 🤔. The best place to check is the official airport website: [Edinburgh Airport Homepage](https://www.edinburghairport.com/) 🌐"
+
+---
+**ZASADY UNIWERSALNE:**
+-   **BEZ FORMATOWANIA:** Nigdy nie używaj znaków formatowania Markdown, takich jak gwiazdki (*), (**), (***) z wyjątkiem tworzenia linków w formacie [tekst](URL).
+
+---
+**KONTEKST Z BAZY WIEDZY (Używaj tylko dla PROTOKOŁU INFORMACYJNEGO):**
 ${context}
 ---`;
 
@@ -129,17 +144,23 @@ app.post('/api/ask', async (req, res) => {
                 const startPhrase = beforeTo.substring(fromKeywordIndex + fromKeywordUsed.length).trim();
                 const endPhrase = afterTo.trim();
 
-                startLocation = locationsData.locations.find(loc => loc.aliases.some(alias => startPhrase.includes(alias)));
-                endLocation = locationsData.locations.find(loc => loc.aliases.some(alias => endPhrase.includes(alias)));
+                const possibleStarts = locationsData.locations.filter(loc => loc.aliases.some(alias => startPhrase.includes(alias)));
+                const possibleEnds = locationsData.locations.filter(loc => loc.aliases.some(alias => endPhrase.includes(alias)));
+
+                if (possibleStarts.length > 0 && possibleEnds.length > 0) {
+                    for (const start of possibleStarts) {
+                        const matchingEnd = possibleEnds.find(end => end.zone === start.zone);
+                        if (matchingEnd) {
+                            startLocation = start;
+                            endLocation = matchingEnd;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
         if (startLocation && endLocation) {
-            if (startLocation.zone !== endLocation.zone) {
-                res.json({ answer: `Wygląda na to, że ${startLocation.name} i ${endLocation.name} znajdują się w różnych strefach lotniska (przed i po kontroli bezpieczeństwa). Niestety, nie mogę wyznaczyć trasy między tymi strefami.` });
-                return;
-            }
-
             const mapPath = path.join(__dirname, 'public', startLocation.map_file);
             const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
             const prompt = `Podaj mi wskazówki, jak dojść z ${startLocation.name} (szczegóły: ${startLocation.details}) do ${endLocation.name} (szczegóły: ${endLocation.details}). Użyj załączonej mapy.`;
