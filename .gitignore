@@ -32,3 +32,5 @@ cpp_tools/reading_time_calculator
 # Skompilowane narzędzia zewnętrzne
 docwire/build/
 docwire/vcpkg/
+
+.dockerignore

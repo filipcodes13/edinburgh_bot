@@ -1,52 +1,22 @@
-# === ETAP 1: Budowanie (Builder) ===
-# Użyj obrazu Node.js, który zawiera również narzędzia do kompilacji C++
-FROM node:18 AS builder
+# Użyj oficjalnego obrazu Node.js
+FROM node:18-slim
 
-# Ustaw folder roboczy
+# Ustaw folder roboczy wewnątrz kontenera
 WORKDIR /usr/src/app
 
-# Zainstaluj g++, kompilator C++
+# Zainstaluj kompilator C++ (g++)
 RUN apt-get update && apt-get install -y g++
 
-# Skopiuj pliki package.json i zainstaluj zależności Node.js
+# Skopiuj pliki package.json i zainstaluj zależności
 COPY package*.json ./
-RUN npm install
+RUN npm install --only=production
 
-# Skopiuj wszystkie pliki projektu
+# Skopiuj resztę plików projektu
 COPY . .
 
 # Skompiluj narzędzia C++
 RUN g++ cpp_tools/reading_time_calculator.cpp -o cpp_tools/reading_time_calculator -std=c++11
 RUN g++ cpp_tools/currency_calculator.cpp -o cpp_tools/currency_calculator -std=c++11
-
-# Uruchom skrypt, aby pobrać i zapisać kursy walut
-# Upewnij się, że EXCHANGERATE_API_KEY jest dostępny jako argument budowania
-ARG EXCHANGERATE_API_KEY
-ENV EXCHANGERATE_API_KEY=${EXCHANGERATE_API_KEY}
-RUN node public/update-rates.js
-
-# === ETAP 2: Produkcja (Final) ===
-# Użyj lekkiego obrazu Node.js do finalnego kontenera
-FROM node:18-slim
-
-WORKDIR /usr/src/app
-
-# Skopiuj tylko niezbędne zależności produkcyjne
-COPY package*.json ./
-RUN npm install --only=production
-
-# Skopiuj pliki aplikacji z etapu budowania
-COPY --from=builder /usr/src/app/public ./public
-COPY --from=builder /usr/src/app/server.js ./server.js
-COPY --from=builder /usr/src/app/public/locations.json ./public/locations.json
-
-# Skopiuj skompilowane programy C++ z etapu budowania
-COPY --from=builder /usr/src/app/cpp_tools/reading_time_calculator ./cpp_tools/
-COPY --from=builder /usr/src/app/cpp_tools/currency_calculator ./cpp_tools/
-
-# --- NOWE LINIE: Nadaj uprawnienia do uruchamiania ---
-RUN chmod +x ./cpp_tools/reading_time_calculator
-RUN chmod +x ./cpp_tools/currency_calculator
 
 # Uruchom serwer, gdy kontener wystartuje
 CMD [ "node", "server.js" ]
