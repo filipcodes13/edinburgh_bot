@@ -27,8 +27,11 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 const locationsPath = path.join(__dirname, 'public/locations.json');
 const locationsData = JSON.parse(fs.readFileSync(locationsPath, 'utf-8'));
 
-let conversationState = {};
+const conversationStates = new Map();
 
+const getSessionId = (req) => {
+    return req.ip; 
+};
 let spotifyToken = null;
 let tokenExpiryTime = 0;
 
@@ -104,6 +107,9 @@ ${context}
 }
 
 app.post('/api/ask', async (req, res) => {
+    const sessionId = req.ip;
+    const conversationState = conversationStates.get(sessionId) || {};
+
     try {
         const { question, lang, chatHistory } = req.body;
         if (!question) return res.status(400).json({ error: 'Zapytanie nie może być puste.' });
@@ -115,7 +121,6 @@ app.post('/api/ask', async (req, res) => {
 
         let startLocation = null;
         let endLocation = null;
-
         let toKeywordIndex = -1;
         let toKeywordUsed = '';
         toKeywords.forEach(kw => {
@@ -129,7 +134,6 @@ app.post('/api/ask', async (req, res) => {
         if (toKeywordIndex !== -1) {
             const beforeTo = lowerQuestion.substring(0, toKeywordIndex);
             const afterTo = lowerQuestion.substring(toKeywordIndex + toKeywordUsed.length);
-
             let fromKeywordIndex = -1;
             let fromKeywordUsed = '';
             fromKeywords.forEach(kw => {
@@ -143,7 +147,6 @@ app.post('/api/ask', async (req, res) => {
             if (fromKeywordIndex !== -1) {
                 const startPhrase = beforeTo.substring(fromKeywordIndex + fromKeywordUsed.length).trim();
                 const endPhrase = afterTo.trim();
-
                 const possibleStarts = locationsData.locations.filter(loc => loc.aliases.some(alias => startPhrase.includes(alias)));
                 const possibleEnds = locationsData.locations.filter(loc => loc.aliases.some(alias => endPhrase.includes(alias)));
 
@@ -165,10 +168,11 @@ app.post('/api/ask', async (req, res) => {
             const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
             const prompt = `Podaj mi wskazówki, jak dojść z ${startLocation.name} (szczegóły: ${startLocation.details}) do ${endLocation.name} (szczegóły: ${endLocation.details}). Użyj załączonej mapy.`;
             const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-            res.json({ 
-                answer: answer, 
+            conversationStates.delete(sessionId); // Zakończ stan nawigacji
+            res.json({
+                answer: answer,
                 imageUrl: startLocation.map_file,
-                action: 'show_navigation_modal' 
+                action: 'show_navigation_modal'
             });
             return;
         }
@@ -176,14 +180,14 @@ app.post('/api/ask', async (req, res) => {
         const destination = locationsData.locations.find(loc => loc.aliases.some(alias => lowerQuestion.includes(alias)));
 
         if (destination) {
-            conversationState = { isNavigating: true, destination: destination, userZone: null };
-            res.json({ 
+            conversationStates.set(sessionId, { isNavigating: true, destination: destination, userZone: null });
+            res.json({
                 answer: "Jasne, mogę Cię tam zaprowadzić. Powiedz mi proszę, gdzie teraz jesteś?",
                 action: 'request_location'
             });
             return;
         }
-        
+
         if (conversationState.isNavigating && !conversationState.userZone) {
             let foundZone = null;
             for (const loc in locationsData.user_locations) {
@@ -202,26 +206,26 @@ app.post('/api/ask', async (req, res) => {
                     const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
                     const prompt = `Prowadź z mojej obecnej lokalizacji do celu: ${dest.name}. Szczegóły celu: ${dest.details}. Użyj załączonej mapy.`;
                     const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-                    conversationState = {};
-                    res.json({ 
-                        answer: answer, 
+                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
+                    res.json({
+                        answer: answer,
                         imageUrl: dest.map_file,
                         action: 'show_navigation_modal'
                     });
                     return;
                 } else if (userZone === 'before_security' && destZone === 'after_security') {
                     const answer = `Twój cel, ${dest.name}, znajduje się po przejściu kontroli bezpieczeństwa. Najpierw udaj się do strefy kontroli. Gdy ją przejdziesz, zapytaj mnie ponownie, a podam Ci dalsze wskazówki.`;
-                    conversationState.userZone = null;
+                    conversationStates.set(sessionId, { ...conversationState, userZone: 'before_security' }); // Zapisz, że użytkownik jest przed kontrolą
                     res.json({ answer });
                     return;
                 } else if (userZone === 'after_security' && destZone === 'before_security') {
                     const answer = `Wygląda na to, że jesteś już w strefie odlotów. Twój cel, ${dest.name}, znajduje się w strefie ogólnodostępnej, przed kontrolą bezpieczeństwa. Niestety, ze względów bezpieczeństwa po przejściu kontroli nie można już do niej wrócić.`;
-                    conversationState = {};
+                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
                     res.json({ answer });
                     return;
                 }
             } else {
-                res.json({ 
+                res.json({
                     answer: "Nie rozumiem. Proszę, wybierz jedną z opcji.",
                     action: 'request_location'
                 });
@@ -229,19 +233,19 @@ app.post('/api/ask', async (req, res) => {
             }
         }
 
-        conversationState = {};
+        conversationStates.delete(sessionId); // Zakończ stan nawigacji, jeśli nie był używany
         const model = genAI.getGenerativeModel({ model: "embedding-001" });
         const queryEmbedding = await model.embedContent(question);
         const pineconeIndex = pinecone.index(PINECONE_INDEX_NAME);
         const queryResult = await pineconeIndex.query({ vector: queryEmbedding.embedding.values, topK: 5, includeMetadata: true });
         const contextText = queryResult.matches.length > 0 ? queryResult.matches.map(match => match.metadata.text_chunk).join('\n\n---\n\n') : "Brak informacji w bazie wiedzy na ten temat.";
-        
+
         const answer = await getAnswerFromAI(question, chatHistory, contextText, lang);
-        res.json({ answer });
+        res.json({ answer, sourceContext: queryResult.matches.length > 0 ? queryResult.matches[0].metadata : null });
 
     } catch (error) {
         console.error('[Backend] Krytyczny błąd w /api/ask:', error);
-        conversationState = {};
+        conversationStates.delete(sessionId); // Wyczyść stan sesji w razie błędu
         res.status(500).json({ error: 'Wystąpił wewnętrzny błąd serwera.' });
     }
 });
@@ -375,3 +379,14 @@ app.post('/api/reading-time', (req, res) => {
 app.listen(port, () => {
     console.log(`Serwer AI Airport Navigator działa na porcie: ${port}`);
 });
+
+const updateRates = () => {
+    console.log('Uruchamiam automatyczną aktualizację kursów walut...');
+    const updateProcess = spawn('node', [path.join(__dirname, 'public', 'update-rates.js')]);
+
+    updateProcess.stdout.on('data', (data) => console.log(`[update-rates]: ${data}`));
+    updateProcess.stderr.on('data', (data) => console.error(`[update-rates BŁĄD]: ${data}`));
+};
+
+updateRates();
+setInterval(updateRates, 24 * 60 * 60 * 1000); 
