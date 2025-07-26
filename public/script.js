@@ -44,7 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
         "error_text": { pl: "Błąd", en: "Error" },
         "reading_time_button": { pl: "Oblicz czas czytania", en: "Calculate Reading Time" },
         "reading_time_result": { pl: "Szacowany czas czytania", en: "Estimated reading time" },
-        "reading_time_unit": { pl: "min", en: "min" }
+        "reading_time_unit": { pl: "min", en: "min" },
+        "before_security": { pl: "Jestem przed kontrolą", en: "I'm before security" },
+        "after_security": { pl: "Jestem po kontroli", en: "I'm after security" }
     };
 
     const suggestionChipsData = [
@@ -84,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory = [];
         chatWindow.innerHTML = '';
         appendMessage(translations.welcome_message[currentLang], 'bot-message', 'Asystent');
-        displaySuggestionChips();
+        displayDefaultSuggestionChips();
         displaySourceContext(null);
     }
 
@@ -101,6 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const talk of smallTalk) {
             if (talk.triggers.some(trigger => lowerCaseQuestion.includes(trigger))) {
                 appendMessage(talk.response[currentLang], 'bot-message', 'Asystent');
+                displayDefaultSuggestionChips();
                 return;
             }
         }
@@ -136,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const answer = `${data.amount} ${data.from.toUpperCase()} = ${data.result.toFixed(2)} ${data.to.toUpperCase()}`;
                 hideTypingIndicator();
                 appendMessage(answer, 'bot-message', 'Asystent');
+                displayDefaultSuggestionChips();
                 displaySourceContext(null);
 
             } catch (error) {
@@ -160,6 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 hideTypingIndicator();
                 appendPlaylist(data.tracks, genre);
+                displayDefaultSuggestionChips();
                 displaySourceContext(null);
 
             } catch (error) {
@@ -192,6 +197,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
                 appendMessage(responseText, 'bot-message', 'Asystent', imageUrl);
                 displaySourceContext(sourceContext);
+                
+                if (data.action === 'request_location') {
+                    displayLocationButtons();
+                } else {
+                    displayDefaultSuggestionChips();
+                }
 
             } catch (error) {
                 hideTypingIndicator();
@@ -252,7 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             trackEmbed.className = 'spotify-embed-container';
             trackEmbed.innerHTML = `
                 <iframe style="border-radius:12px" 
-                        src="https://open.spotify.com/embed/track/$${track.id}?utm_source=generator" 
+                        src="https://open.spotify.com/embed/track/${track.id}?utm_source=generator" 
                         width="100%" 
                         height="80" 
                         frameBorder="0" 
@@ -281,16 +292,28 @@ document.addEventListener('DOMContentLoaded', () => {
         if (indicator) indicator.remove();
     }
 
-    function displaySuggestionChips() {
+    function displaySuggestionChips(chips) {
         const chipsContainer = document.getElementById('suggestion-chips-container');
         chipsContainer.innerHTML = '';
-        suggestionChipsData.forEach(chipData => {
+        chips.forEach(chipData => {
             const chip = document.createElement('button');
             chip.className = 'suggestion-chip';
             chip.textContent = chipData[currentLang];
             chip.addEventListener('click', () => handleUserInput(chipData[currentLang]));
             chipsContainer.appendChild(chip);
         });
+    }
+
+    function displayDefaultSuggestionChips() {
+        displaySuggestionChips(suggestionChipsData);
+    }
+
+    function displayLocationButtons() {
+        const locationChips = [
+            { pl: translations.before_security.pl, en: translations.before_security.en },
+            { pl: translations.after_security.pl, en: translations.after_security.en }
+        ];
+        displaySuggestionChips(locationChips);
     }
 
     function hideSuggestionChips() {
@@ -349,11 +372,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const textToProcess = blockquote.innerText;
-
             const originalButtonText = summarizeButton.textContent;
             summarizeButton.textContent = translations.thinking_message[currentLang];
             summarizeButton.disabled = true;
-            
             try {
                 const response = await fetch('/api/summarize', {
                     method: 'POST',
@@ -380,11 +401,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const textToProcess = blockquote.innerText;
-
             const originalButtonText = translateButton.textContent;
             translateButton.textContent = translations.thinking_message[currentLang];
             translateButton.disabled = true;
-
             try {
                 const response = await fetch('/api/translate', {
                     method: 'POST',
@@ -411,11 +430,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             const textToProcess = blockquote.innerText;
-
             const originalButtonText = readingTimeButton.textContent;
             readingTimeButton.textContent = translations.thinking_message[currentLang];
             readingTimeButton.disabled = true;
-            
             try {
                 const response = await fetch('/api/reading-time', {
                     method: 'POST',
@@ -424,10 +441,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const data = await response.json();
                 if (data.error) throw new Error(data.error);
-                
                 const resultText = `${data.readingTime} ${translations.reading_time_unit[currentLang]}`;
                 displayActionResult('reading_time_result', resultText);
-
             } catch (error) {
                 displayActionResult('error_text', error.message);
             } finally {
