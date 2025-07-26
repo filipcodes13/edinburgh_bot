@@ -46,7 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
         "reading_time_result": { pl: "Szacowany czas czytania", en: "Estimated reading time" },
         "reading_time_unit": { pl: "min", en: "min" },
         "before_security": { pl: "Jestem przed kontrolą", en: "I'm before security" },
-        "after_security": { pl: "Jestem po kontroli", en: "I'm after security" }
+        "after_security": { pl: "Jestem po kontroli", en: "I'm after security" },
+        "nav_modal_header": { pl: "Wskazówki Nawigacyjne", en: "Navigation Instructions" },
+        "nav_modal_close": { pl: "Zamknij", en: "Close" }
     };
 
     const suggestionChipsData = [
@@ -66,6 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const summarizeButton = document.getElementById('summarize-btn');
     const translateButton = document.getElementById('translate-btn');
     const readingTimeButton = document.getElementById('reading-time-btn');
+    const navigationModal = document.getElementById('navigation-modal');
+    const modalMapImage = document.getElementById('modal-map-image');
+    const modalNavigationText = document.getElementById('modal-navigation-text');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
 
     function setLanguage(lang) {
         currentLang = lang;
@@ -85,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         chatHistory = [];
         chatWindow.innerHTML = '';
-        appendMessage(translations.welcome_message[currentLang], 'bot-message', 'Asystent');
+        appendMessage(translations.welcome_message[currentLang], 'bot-message welcome-message', 'Asystent');
         displayDefaultSuggestionChips();
         displaySourceContext(null);
     }
@@ -189,19 +195,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!apiResponse.ok) throw new Error('Błąd odpowiedzi serwera.');
 
                 const data = await apiResponse.json();
-                const responseText = data.answer || "Przepraszam, wystąpił błąd.";
-                const imageUrl = data.imageUrl || null;
-                const sourceContext = data.sourceContext || null;
-                
                 hideTypingIndicator();
-                chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
-                appendMessage(responseText, 'bot-message', 'Asystent', imageUrl);
-                displaySourceContext(sourceContext);
-                
-                if (data.action === 'request_location') {
-                    displayLocationButtons();
+
+                if (data.action === 'show_navigation_modal') {
+                    showNavigationModal(data.imageUrl, data.answer);
                 } else {
-                    displayDefaultSuggestionChips();
+                    const responseText = data.answer || "Przepraszam, wystąpił błąd.";
+                    chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
+                    appendMessage(responseText, 'bot-message', 'Asystent', data.imageUrl);
+                    displaySourceContext(data.sourceContext);
+
+                    if (data.action === 'request_location') {
+                        displayLocationButtons();
+                    } else {
+                        displayDefaultSuggestionChips();
+                    }
                 }
 
             } catch (error) {
@@ -221,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageContainer = document.createElement('div');
         messageContainer.className = className;
     
-        if (className === 'bot-message') {
+        if (className.includes('bot-message')) {
             const avatarElement = document.createElement('img');
             avatarElement.src = 'images/bot-avatar.png';
             avatarElement.className = 'bot-avatar';
@@ -253,11 +261,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function appendPlaylist(tracks, genre) {
         const playlistContainer = document.createElement('div');
         playlistContainer.className = 'bot-message';
-
         const header = document.createElement('p');
         header.innerHTML = `<strong>Asystent:</strong> Oto propozycja playlisty (${genre}):`;
         playlistContainer.appendChild(header);
-
         tracks.forEach(track => {
             const trackEmbed = document.createElement('div');
             trackEmbed.className = 'spotify-embed-container';
@@ -273,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             playlistContainer.appendChild(trackEmbed);
         });
-        
         chatWindow.appendChild(playlistContainer);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
@@ -295,10 +300,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function displaySuggestionChips(chips) {
         const chipsContainer = document.getElementById('suggestion-chips-container');
         chipsContainer.innerHTML = '';
-        chips.forEach(chipData => {
+        chips.forEach((chipData, index) => {
             const chip = document.createElement('button');
             chip.className = 'suggestion-chip';
             chip.textContent = chipData[currentLang];
+            chip.style.animationDelay = `${index * 0.1}s`;
             chip.addEventListener('click', () => handleUserInput(chipData[currentLang]));
             chipsContainer.appendChild(chip);
         });
@@ -321,6 +327,16 @@ document.addEventListener('DOMContentLoaded', () => {
         chipsContainer.innerHTML = '';
     }
 
+    function showNavigationModal(imageUrl, text) {
+        modalMapImage.src = imageUrl;
+        modalNavigationText.innerText = text;
+        navigationModal.style.display = 'flex';
+    }
+
+    function hideNavigationModal() {
+        navigationModal.style.display = 'none';
+    }
+
     function displaySourceContext(context) {
         if (context && context.text_chunk) {
             sdkDemos.style.display = 'flex';
@@ -338,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function displayActionResult(headerKey, content) {
         const oldResult = infoContentDiv.querySelector('.action-result');
         if (oldResult) oldResult.remove();
-
         const resultDiv = document.createElement('div');
         resultDiv.className = 'action-result';
         resultDiv.style.marginTop = '15px';
@@ -363,6 +378,17 @@ document.addEventListener('DOMContentLoaded', () => {
     
     document.getElementById('lang-pl').addEventListener('click', () => setLanguage('pl'));
     document.getElementById('lang-en').addEventListener('click', () => setLanguage('en'));
+
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', hideNavigationModal);
+    }
+    if (navigationModal) {
+        navigationModal.addEventListener('click', (e) => {
+            if (e.target === navigationModal) {
+                hideNavigationModal();
+            }
+        });
+    }
 
     if (summarizeButton) {
         summarizeButton.addEventListener('click', async () => {
