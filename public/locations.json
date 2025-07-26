@@ -1,0 +1,208 @@
+{
+  "locations": [
+    {
+      "name": "Luggage Point",
+      "aliases": ["luggage point", "przechowalnia bagażu", "bagaż"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Punkt bagażowy (nr 10) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Sainsbury's Local",
+      "aliases": ["sainsbury's", "market", "sklep spożywczy"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Market (nr 8) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Travelex Currency Exchange (przed kontrolą)",
+      "aliases": ["travelex", "kantor", "wymiana walut"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Kantor wymiany walut (nr 9 i 13) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "WHSmith (przed kontrolą)",
+      "aliases": ["whsmith", "księgarnia", "gazety"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Sklep WHSmith (nr 7 i 12) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Costa Coffee (przed kontrolą)",
+      "aliases": ["costa", "kawiarnia"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Kawiarnia Costa (nr 11) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Black Sheep Coffee",
+      "aliases": ["black sheep coffee"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Kawiarnia Black Sheep Coffee (nr 5) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Check-In Zones",
+      "aliases": ["check-in", "odprawa", "strefa a", "strefa b", "strefa c", "strefa d"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Strefy odprawy (Check-In Zones A, B, C, D) znajdują się w głównej hali, przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Special Assistance Reception",
+      "aliases": ["special assistance", "pomoc specjalna", "recepcja"],
+      "zone": "before_security",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "Recepcja dla osób wymagających specjalnej asysty (nr 6) znajduje się w strefie przed kontrolą bezpieczeństwa."
+    },
+    {
+      "name": "Kontrola Bezpieczeństwa",
+      "aliases": ["kontrola bezpieczeństwa", "security"],
+      "zone": "transition_point",
+      "map_file": "images/mapa_przed_kontrola.jpg",
+      "details": "To główne przejście do strefy odlotów."
+    },
+    {
+      "name": "World Duty Free",
+      "aliases": ["duty free", "wolnocłowy"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Główny sklep wolnocłowy, zlokalizowany tuż po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Accessorize",
+      "aliases": ["accessorize"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Sklep Accessorize znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "All Bar One",
+      "aliases": ["all bar one"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Restauracja All Bar One znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Barburrito",
+      "aliases": ["barburrito"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Restauracja Barburrito znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Boots",
+      "aliases": ["boots", "apteka"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Sklep Boots znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Brewdog",
+      "aliases": ["brewdog"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Bar Brewdog znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Burger King",
+      "aliases": ["burger king"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Restauracja Burger King znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Caffe Nero",
+      "aliases": ["caffe nero"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Kawiarnia Caffe Nero znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Heritage of Scotland",
+      "aliases": ["heritage of scotland", "pamiątki"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Sklep z pamiątkami Heritage of Scotland znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "JD Sports",
+      "aliases": ["jd sports"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Sklep JD Sports znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Pret A Manger",
+      "aliases": ["pret a manger", "pret"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Kawiarnia Pret A Manger znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Starbucks",
+      "aliases": ["starbucks"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Kawiarnia Starbucks znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Sunglass Hut",
+      "aliases": ["sunglass hut", "okulary"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Sklep Sunglass Hut znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "WHSmith (po kontroli)",
+      "aliases": ["whsmith"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Sklepy WHSmith znajdują się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+        "name": "Bramki (Gates)",
+        "aliases": ["bramka", "gate"],
+        "zone": "after_security",
+        "map_file": "images/mapa_po_kontroli.jpg",
+        "details": "Bramki odlotowe znajdują się w całej strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Aspire Lounge",
+      "aliases": ["aspire lounge", "salonik aspire"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Salonik Aspire Lounge znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "British Airways Lounge",
+      "aliases": ["british airways lounge", "salonik british airways"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Salonik British Airways Lounge znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Escape Lounge",
+      "aliases": ["escape lounge", "salonik escape"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Salonik Escape Lounge znajduje się w strefie po kontroli bezpieczeństwa."
+    },
+    {
+      "name": "Plaza Premium Lounge",
+      "aliases": ["plaza premium lounge", "salonik plaza premium"],
+      "zone": "after_security",
+      "map_file": "images/mapa_po_kontroli.jpg",
+      "details": "Salonik Plaza Premium Lounge znajduje się w strefie po kontroli bezpieczeństwa."
+    }
+  ],
+  "user_locations": {
+      "przed kontrolą": "before_security",
+      "before security": "before_security",
+      "po kontroli": "after_security",
+      "after security": "after_security",
+      "przy bramce": "after_security",
+      "at the gate": "after_security"
+  }
+}

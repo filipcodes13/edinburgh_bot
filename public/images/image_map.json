@@ -1,0 +1,19 @@
+{
+  "kontrola bezpieczeństwa": "images/kontrola_bezpieczenstwa.jpg",
+  "security": "images/kontrola_bezpieczenstwa.jpg",
+  "paszportowa": "images/kontrola_paszportowa.jpg",
+  "passport control": "images/kontrola_paszportowa.jpg",
+  "odprawa": "images/nadawanie_bagazu.jpg",
+  "check-in": "images/nadawanie_bagazu.jpg",
+  "nadać bagaż": "images/nadawanie_bagazu.jpg",
+  "lounge": "images/salonik_lounge.jpg",
+  "salonik": "images/salonik_lounge.jpg",
+  "poczekalnia": "images/salonik_lounge.jpg",
+  "informacj": "images/punkt_informacji.jpg",
+  "taxi": "images/postoj_taksowek.jpg",
+  "autobus": "images/przystanek_autobusowy_lotnisko.jpg",
+  "parking": "images/parking_wielopoziomowy.jpg",
+  "duty free": "images/sklep_wolnoclowy.jpg",
+  "kawiarnia": "images/kawiarnia_lotnisko.jpg",
+  "restauracja": "images/restauracja_lotnisko.jpg"
+}
