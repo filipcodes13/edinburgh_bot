@@ -50,7 +50,6 @@
                     <button id="summarize-btn" data-key="summarize_button">Podsumuj źródło</button>
                     <button id="translate-btn" data-key="translate_button">Przetłumacz źródło</button>
                     <button id="reading-time-btn" data-key="reading_time_button">Oblicz czas czytania</button>
-
                 </div>
             </div>
 
@@ -61,8 +60,17 @@
         </footer>
     </div>
 
+    <div id="navigation-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 data-key="nav_modal_header">Wskazówki Nawigacyjne</h3>
+            <img id="modal-map-image" src="" alt="Mapa nawigacyjna">
+            <p id="modal-navigation-text"></p>
+            <button id="modal-close-btn" data-key="nav_modal_close">Zamknij</button>
+        </div>
+    </div>
+
     <script src="/script.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 </body>
 </html>

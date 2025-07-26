@@ -144,7 +144,11 @@ app.post('/api/ask', async (req, res) => {
             const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
             const prompt = `Podaj mi wskazówki, jak dojść z ${startLocation.name} (szczegóły: ${startLocation.details}) do ${endLocation.name} (szczegóły: ${endLocation.details}). Użyj załączonej mapy.`;
             const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-            res.json({ answer, imageUrl: startLocation.map_file });
+            res.json({ 
+                answer: answer, 
+                imageUrl: startLocation.map_file,
+                action: 'show_navigation_modal' 
+            });
             return;
         }
 
@@ -178,7 +182,11 @@ app.post('/api/ask', async (req, res) => {
                     const prompt = `Prowadź z mojej obecnej lokalizacji do celu: ${dest.name}. Szczegóły celu: ${dest.details}. Użyj załączonej mapy.`;
                     const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
                     conversationState = {};
-                    res.json({ answer, imageUrl: dest.map_file });
+                    res.json({ 
+                        answer: answer, 
+                        imageUrl: dest.map_file,
+                        action: 'show_navigation_modal'
+                    });
                     return;
                 } else if (userZone === 'before_security' && destZone === 'after_security') {
                     const answer = `Twój cel, ${dest.name}, znajduje się po przejściu kontroli bezpieczeństwa. Najpierw udaj się do strefy kontroli. Gdy ją przejdziesz, zapytaj mnie ponownie, a podam Ci dalsze wskazówki.`;
