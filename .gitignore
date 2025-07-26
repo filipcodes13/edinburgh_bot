@@ -25,4 +25,10 @@ Thumbs.debug
 
 /raw_airport_docs
 
+# Skompilowane pliki C++
+cpp_tools/currency_calculator
+cpp_tools/reading_time_calculator
 
+# Skompilowane narzędzia zewnętrzne
+docwire/build/
+docwire/vcpkg/

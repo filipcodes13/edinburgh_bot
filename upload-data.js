@@ -63,8 +63,10 @@ async function uploadAllFilesAndEmbeddings() {
         }
 
         const index = pinecone.index(PINECONE_INDEX_NAME);
-        const filesToProcess = fs.readdirSync(docsPath).filter(file => file.endsWith('.txt'));
-
+        const singleFileName = process.argv[2]; 
+        const filesToProcess = singleFileName 
+        ? [singleFileName] 
+        : fs.readdirSync(docsPath).filter(file => file.endsWith('.txt'));
         if (filesToProcess.length === 0) {
             console.warn("⚠️ Brak plików .txt w folderze 'airport_docs' do przetworzenia.");
             return;

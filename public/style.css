@@ -125,7 +125,7 @@ body {
 }
 
 .welcome-message {
-    animation: flickerIn 1s ease-in;
+    animation: fadeIn 0.8s ease-out;
 }
 
 .user-message {

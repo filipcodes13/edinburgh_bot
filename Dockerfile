@@ -38,12 +38,15 @@ RUN npm install --only=production
 # Skopiuj pliki aplikacji z etapu budowania
 COPY --from=builder /usr/src/app/public ./public
 COPY --from=builder /usr/src/app/server.js ./server.js
-# --- TA LINIA ZOSTAŁA POPRAWIONA ---
 COPY --from=builder /usr/src/app/public/locations.json ./public/locations.json
 
 # Skopiuj skompilowane programy C++ z etapu budowania
 COPY --from=builder /usr/src/app/cpp_tools/reading_time_calculator ./cpp_tools/
 COPY --from=builder /usr/src/app/cpp_tools/currency_calculator ./cpp_tools/
+
+# --- NOWE LINIE: Nadaj uprawnienia do uruchamiania ---
+RUN chmod +x ./cpp_tools/reading_time_calculator
+RUN chmod +x ./cpp_tools/currency_calculator
 
 # Uruchom serwer, gdy kontener wystartuje
 CMD [ "node", "server.js" ]

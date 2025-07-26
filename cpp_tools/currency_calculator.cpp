@@ -1,23 +1,8 @@
 #include <iostream>
 #include <string>
-#include <sstream>
-#include <vector>
+#include "json.hpp"
 
-double getValueFromJson(const std::string& json, const std::string& key) {
-    std::string search_key = "\"" + key + "\":";
-    size_t pos = json.find(search_key);
-    if (pos == std::string::npos) return 0.0;
-
-    pos += search_key.length();
-    size_t end_pos = json.find_first_of(",}", pos);
-    std::string value_str = json.substr(pos, end_pos - pos);
-    
-    try {
-        return std::stod(value_str);
-    } catch (...) {
-        return 0.0;
-    }
-}
+using json = nlohmann::json;
 
 int main() {
     double amount;
@@ -26,18 +11,23 @@ int main() {
     std::string line;
 
     std::cin >> amount >> from_currency >> to_currency;
-    
+
     std::getline(std::cin, line); // Wyczyść bufor
     std::getline(std::cin, json_rates_str);
 
-    double from_rate = getValueFromJson(json_rates_str, from_currency);
-    double to_rate = getValueFromJson(json_rates_str, to_currency);
+    try {
+        auto rates_data = json::parse(json_rates_str);
+        if (rates_data.find(from_currency) == rates_data.end() || rates_data.find(to_currency) == rates_data.end()) {
+             std::cerr << "Error: Could not find rates for specified currencies.";
+             return 1;
+        }
+        double from_rate = rates_data[from_currency];
+        double to_rate = rates_data[to_currency];
 
-    if (from_rate > 0 && to_rate > 0) {
         double result = (amount / from_rate) * to_rate;
         std::cout << result;
-    } else {
-        std::cerr << "Error: Could not find rates for specified currencies.";
+    } catch (json::parse_error& e) {
+        std::cerr << "Error: Invalid JSON format. " << e.what();
         return 1;
     }
 
