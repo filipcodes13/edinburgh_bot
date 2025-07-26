@@ -14,7 +14,7 @@ body {
     background-color: var(--background-color);
     color: var(--text-color);
     margin: 0;
-    padding: 40px 20px;
+    padding: 20px 12px;
     line-height: 1.6;
     display: flex;
     flex-direction: column;
@@ -28,7 +28,7 @@ body {
     width: 100%;
     max-width: 1200px;
     background: var(--card-bg);
-    padding: 40px 32px;
+    padding: 24px 20px;
     margin: 20px auto;
     border-radius: 24px;
     box-shadow: 0 10px 40px rgba(162, 60, 157, 0.15);
@@ -363,6 +363,38 @@ body {
 
 #modal-close-btn:hover {
     background-color: #b945b4;
+}
+
+@media (max-width: 992px) {
+    .content-wrapper {
+        flex-direction: column;
+        gap: 30px;
+    }
+}
+
+@media (max-width: 576px) {
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    .app-header h1 {
+        font-size: 20px;
+    }
+    .app-header p {
+        font-size: 14px;
+    }
+    .chat-window {
+        height: 50vh;
+    }
+    .chat-input-area {
+        flex-direction: column;
+        gap: 15px;
+    }
+    #send-btn {
+        padding: 16px;
+        width: 100%;
+    }
 }
 
 /* --- SEKCJA ANIMACJI --- */
