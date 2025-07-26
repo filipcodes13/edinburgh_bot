@@ -6,6 +6,7 @@ const fs = require('fs');
 const axios = require('axios');
 const { Pinecone } = require('@pinecone-database/pinecone');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { spawn } = require('child_process'); // Dodajemy 'spawn' do importów
 
 const app = express();
 const port = 8080; 
@@ -14,8 +15,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-if (!process.env.PINECONE_API_KEY || !process.env.GOOGLE_API_KEY || !process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
-    console.error("KRYTYCZNY BŁĄD: Brakuje kluczy API! Upewnij się, że plik .env zawiera klucze Pinecone, Google oraz Spotify.");
+
+if (!process.env.PINECONE_API_KEY || !process.env.GOOGLE_API_KEY || !process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET || !process.env.EXCHANGERATE_API_KEY) {
+    console.error("KRYTYCZNY BŁĄD: Brakuje kluczy API! Upewnij się, że plik .env zawiera klucze Pinecone, Google, Spotify ORAZ EXCHANGERATE_API_KEY.");
     process.exit(1);
 }
 
@@ -56,27 +58,6 @@ async function getSpotifyToken() {
 
 
 const RATES_FILE_PATH = path.join(__dirname, 'public', 'rates.json');
-let exchangeRates = {};
-
-function loadRates() {
-    try {
-        if (fs.existsSync(RATES_FILE_PATH)) {
-            const ratesData = JSON.parse(fs.readFileSync(RATES_FILE_PATH, 'utf-8'));
-            const upperCaseRates = {};
-            for (const key in ratesData.rates) {
-                upperCaseRates[key.toUpperCase()] = ratesData.rates[key];
-            }
-            upperCaseRates[ratesData.base.toUpperCase()] = 1.0;
-            exchangeRates = upperCaseRates;
-            console.log('✅ Kursy walut zostały pomyślnie załadowane do pamięci.');
-        } else {
-            console.error('❌ BŁĄD: Plik rates.json nie istnieje. Uruchom `node update-rates.js`, aby go stworzyć.');
-        }
-    } catch (error) {
-        console.error('❌ Błąd podczas wczytywania pliku z kursami walut:', error);
-    }
-}
-loadRates();
 
 
 
@@ -189,15 +170,54 @@ app.post('/api/convert', (req, res) => {
     if (typeof amount !== 'number' || !from || !to) {
         return res.status(400).json({ error: 'Nieprawidłowe dane.' });
     }
-    const fromRate = exchangeRates[from.toUpperCase()];
-    const toRate = exchangeRates[to.toUpperCase()];
-    if (!fromRate || !toRate) {
-        return res.status(404).json({ error: 'Waluta nieobsługiwana.' });
+
+    const upperFrom = from.toUpperCase();
+    const upperTo = to.toUpperCase();
+    
+    if (!fs.existsSync(RATES_FILE_PATH)) {
+        return res.status(500).json({ error: 'Brak pliku z kursami walut. Uruchom `node public/update-rates.js`.' });
     }
-    const amountInBase = amount / fromRate;
-    const result = amountInBase * toRate;
-    res.json({ from, to, amount, result });
+
+    const ratesJson = fs.readFileSync(RATES_FILE_PATH, 'utf-8');
+    const rates = JSON.parse(ratesJson);
+
+    if (rates.base !== 'GBP') {
+        return res.status(500).json({ error: 'Błąd konfiguracji: Waluta bazowa w pliku rates.json nie jest GBP.' });
+    }
+    
+    if (!rates.rates[upperFrom] || !rates.rates[upperTo]) {
+         return res.status(404).json({ error: 'Waluta nieobsługiwana.' });
+    }
+
+    const calculatorPath = path.join(__dirname, 'cpp_tools', 'currency_calculator');
+    const calculatorProcess = spawn(calculatorPath);
+
+    let result = '';
+    let errorResult = '';
+
+    const inputData = `${amount} ${upperFrom} ${upperTo}\n${JSON.stringify(rates.rates)}`;
+    calculatorProcess.stdin.write(inputData);
+    calculatorProcess.stdin.end();
+
+    calculatorProcess.stdout.on('data', (data) => {
+        result += data.toString();
+    });
+
+    calculatorProcess.stderr.on('data', (data) => {
+        errorResult += data.toString();
+    });
+
+    calculatorProcess.on('close', (code) => {
+        if (code === 0) {
+            const finalResult = parseFloat(result.trim());
+            res.json({ from: upperFrom, to: upperTo, amount, result: finalResult });
+        } else {
+            console.error(`Błąd programu C++ (currency_calculator): ${errorResult}`);
+            res.status(500).json({ error: 'Błąd podczas obliczania kursu waluty.', details: errorResult.trim() });
+        }
+    });
 });
+
 
 app.post('/api/summarize', async (req, res) => {
     const { text } = req.body;
@@ -224,8 +244,6 @@ app.post('/api/translate', async (req, res) => {
         res.status(500).json({ error: 'Wystąpił błąd podczas tłumaczenia.' });
     }
 });
-
-const { spawn } = require('child_process'); 
 
 app.post('/api/reading-time', (req, res) => {
     const { text } = req.body;

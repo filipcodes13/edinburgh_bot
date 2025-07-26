@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Dane statyczne i tłumaczenia ---
     const smallTalk = [
         {
             triggers: ["hej", "czesc", "cześć", "siema", "witaj", "dzien dobry", "dzień dobry"],
@@ -100,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const lowerCaseQuestion = userQuestion.toLowerCase();
 
         for (const talk of smallTalk) {
-            if (talk.triggers.includes(lowerCaseQuestion)) {
+            if (talk.triggers.some(trigger => lowerCaseQuestion.includes(trigger))) {
                 appendMessage(talk.response[currentLang], 'bot-message', 'Asystent');
                 return;
             }
@@ -209,21 +208,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function appendMessage(text, className, author, imageUrl = null) {
         const messageContainer = document.createElement('div');
-        messageContainer.className = `chat-message ${className}`;
+        messageContainer.className = className;
+    
+        if (className === 'bot-message') {
+            const avatarElement = document.createElement('img');
+            avatarElement.src = 'images/bot-avatar.png';
+            avatarElement.className = 'bot-avatar';
+            messageContainer.appendChild(avatarElement);
+        }
         
+        const contentDiv = document.createElement('div');
+    
         const textElement = document.createElement('p');
         textElement.innerHTML = `<strong>${author}: </strong> ${parseMarkdownLinks(text)}`;
-        
-        messageContainer.appendChild(textElement);
-
+        contentDiv.appendChild(textElement);
+    
         if (imageUrl) {
             const imageElement = document.createElement('img');
             imageElement.src = imageUrl;
             imageElement.style.maxWidth = '100%';
             imageElement.style.borderRadius = '10px';
             imageElement.style.marginTop = '10px';
-            messageContainer.appendChild(imageElement);
+            contentDiv.appendChild(imageElement);
         }
+        
+        messageContainer.appendChild(contentDiv);
+        messageContainer.classList.add('chat-message');
         
         chatWindow.appendChild(messageContainer);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -242,7 +252,7 @@ document.addEventListener('DOMContentLoaded', () => {
             trackEmbed.className = 'spotify-embed-container';
             trackEmbed.innerHTML = `
                 <iframe style="border-radius:12px" 
-                        src="https://open.spotify.com/embed/track/${track.id}?utm_source=generator" 
+                        src="https://open.spotify.com/embed/track/$${track.id}?utm_source=generator" 
                         width="100%" 
                         height="80" 
                         frameBorder="0" 
@@ -427,4 +437,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
- 
