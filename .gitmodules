@@ -1,0 +1,3 @@
+[submodule "docwire"]
+    path = docwire
+    url = https://github.com/filipcodes13/docwire.git
