@@ -9,7 +9,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn } = require('child_process');
 
 const app = express();
-const port = 8080; 
+const port = 8080;
 
 app.use(cors());
 app.use(express.json());
@@ -30,7 +30,7 @@ const locationsData = JSON.parse(fs.readFileSync(locationsPath, 'utf-8'));
 const conversationStates = new Map();
 
 const getSessionId = (req) => {
-    return req.ip; 
+    return req.ip;
 };
 let spotifyToken = null;
 let tokenExpiryTime = 0;
@@ -87,7 +87,7 @@ async function getAnswerFromAI(query, chatHistory, context, lang = 'pl', imagePa
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
     const langInstruction = lang === 'en' ? 'Your answer must be in English.' : 'Twoja odpowiedź musi być w języku polskim.';
     const historyForGemini = chatHistory.map(turn => ({ role: turn.role, parts: [{ text: turn.parts[0].text }] }));
-    
+
     const systemInstruction = `Jesteś przyjaznym i pomocnym asystentem AI ✈️ na Lotnisku w Edynburgu (EDI). Twoim zadaniem jest prowadzenie miłej i użytecznej konwersacji. Używaj emoji, aby Twoje odpowiedzi były bardziej przyjazne! ${langInstruction}
 
 **NAJWAŻNIEJSZA ZASADA (ROUTER INTENCJI):**
@@ -120,7 +120,7 @@ ${context}
 ---`;
 
     const chat = model.startChat({ history: historyForGemini, systemInstruction: { role: "system", parts: [{ text: systemInstruction }] }, generationConfig: { maxOutputTokens: 1000 } });
-    
+
     const result = await chat.sendMessage([query, ...imageParts]);
     const response = await result.response;
     return response.text().trim();
@@ -144,16 +144,12 @@ app.post('/api/ask', async (req, res) => {
         if (conversationState.isNavigating && conversationState.destination && conversationState.userZone === null) {
             console.log("[DEBUG - API ASK] Tryb nawigacji: oczekiwanie na strefę użytkownika (kontynuacja).");
             let foundZone = null;
-            console.log(`[DEBUG - USER ZONE] Próba znalezienia strefy dla pytania: "${lowerQuestion}"`);
-            for (const locAlias of Object.keys(locationsData.user_locations)) { 
-                console.log(`[DEBUG - USER ZONE] Sprawdzanie aliasu: "${locAlias}". Czy "${lowerQuestion}" zawiera "${locAlias}"? ${lowerQuestion.includes(locAlias)}`);
+            for (const locAlias of Object.keys(locationsData.user_locations)) {
                 if (lowerQuestion.includes(locAlias)) {
                     foundZone = locationsData.user_locations[locAlias];
-                    console.log(`[DEBUG - USER ZONE] Znaleziono pasującą strefę: "${foundZone}" dla aliasu: "${locAlias}"`);
                     break;
                 }
             }
-            console.log(`[DEBUG - USER ZONE] Ostateczna znaleziona strefa: "${foundZone}"`);
 
             if (foundZone) {
                 const userZone = foundZone;
@@ -167,9 +163,9 @@ app.post('/api/ask', async (req, res) => {
                     const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
                     const prompt = `Prowadź z mojej obecnej lokalizacji do celu: ${dest.name[lang]}. Szczegóły celu: ${dest.details[lang]}. Użyj załączonej mapy.`;
                     const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-                    conversationStates.delete(sessionId); 
+                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
                     res.json({
-                        answer: answer.replace(/^INTENCJA:NAWIGACJA: /, ''), 
+                        answer: answer.replace(/^INTENCJA:NAWIGACJA: /, ''),
                         imageUrl: dest.map_file,
                         action: 'show_navigation_modal'
                     });
@@ -177,24 +173,24 @@ app.post('/api/ask', async (req, res) => {
                 } else if (userZone === 'before_security' && destZone === 'after_security') {
                     console.log("[DEBUG - USER ZONE] Użytkownik jest przed kontrolą, cel jest po kontroli.");
                     const answer = navigationResponses.before_to_after_security[lang](dest.name[lang]);
-                    conversationStates.set(sessionId, { ...conversationState, userZone: 'before_security' }); 
+                    conversationStates.set(sessionId, { ...conversationState, userZone: 'before_security' }); // Utrzymaj stan, ale zaktualizuj strefę
                     res.json({ answer });
                     return;
                 } else if (userZone === 'after_security' && destZone === 'before_security') {
                     console.log("[DEBUG - USER ZONE] Użytkownik jest po kontroli, cel jest przed kontrolą.");
                     const answer = navigationResponses.after_to_before_security[lang](dest.name[lang]);
-                    conversationStates.delete(sessionId); 
+                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
                     res.json({ answer });
                     return;
                 }
-                 console.log("[DEBUG - USER ZONE] Logika stref nie pasuje, powrót do pytania o lokalizację.");
-                 res.json({
+                console.log("[DEBUG - USER ZONE] Logika stref nie pasuje, powrót do pytania o lokalizację.");
+                res.json({
                     answer: navigationResponses.not_understood[lang],
                     action: 'request_location'
                 });
                 return;
 
-            } else { 
+            } else {
                 console.log("[DEBUG - USER ZONE] Nie zrozumiano strefy użytkownika. Ponowne pytanie o lokalizację.");
                 res.json({
                     answer: navigationResponses.not_understood[lang],
@@ -207,7 +203,7 @@ app.post('/api/ask', async (req, res) => {
         const aiResponseWithIntent = await getAnswerFromAI(question, chatHistory, "", lang);
         const [intentPrefix, aiAnswerContent] = aiResponseWithIntent.split(/^(INTENCJA:NAWIGACJA:|INTENCJA:INFORMACJA:)\s*/).slice(1);
         const intent = intentPrefix ? intentPrefix.replace('INTENCJA:', '').replace(':', '').trim() : 'UNKNOWN';
-        const finalAiAnswer = aiAnswerContent || aiResponseWithIntent; 
+        const finalAiAnswer = aiAnswerContent || aiResponseWithIntent;
 
         console.log(`[DEBUG - API ASK] AI sklasyfikowało intencję jako: ${intent}`);
 
@@ -217,6 +213,7 @@ app.post('/api/ask', async (req, res) => {
             let endLocation = null;
             let toKeywordIndex = -1;
             let toKeywordUsed = '';
+
             toKeywords.forEach(kw => {
                 let index = lowerQuestion.lastIndexOf(kw);
                 if (index > toKeywordIndex) {
@@ -228,6 +225,7 @@ app.post('/api/ask', async (req, res) => {
             if (toKeywordIndex !== -1) {
                 const beforeTo = lowerQuestion.substring(0, toKeywordIndex);
                 const afterTo = lowerQuestion.substring(toKeywordIndex + toKeywordUsed.length);
+
                 let fromKeywordIndex = -1;
                 let fromKeywordUsed = '';
                 fromKeywords.forEach(kw => {
@@ -241,12 +239,16 @@ app.post('/api/ask', async (req, res) => {
                 if (fromKeywordIndex !== -1) {
                     const startPhrase = beforeTo.substring(fromKeywordIndex + fromKeywordUsed.length).trim();
                     const endPhrase = afterTo.trim();
+
                     console.log(`[DEBUG - API ASK] Próba dopasowania lokalizacji (pełna trasa): startPhrase="${startPhrase}", endPhrase="${endPhrase}"`);
+
                     const possibleStarts = locationsData.locations.filter(loc => loc.aliases[lang].some(alias => startPhrase.includes(alias)));
                     const possibleEnds = locationsData.locations.filter(loc => loc.aliases[lang].some(alias => endPhrase.includes(alias)));
+
                     console.log(`[DEBUG - API ASK] Możliwe początki: ${possibleStarts.map(p => p.name[lang])}, Możliwe cele: ${possibleEnds.map(p => p.name[lang])}`);
 
                     if (possibleStarts.length > 0 && possibleEnds.length > 0) {
+
                         for (const start of possibleStarts) {
                             const matchingEnd = possibleEnds.find(end => end.zone === start.zone);
                             if (matchingEnd) {
@@ -256,25 +258,45 @@ app.post('/api/ask', async (req, res) => {
                                 break;
                             }
                         }
+                        if (!startLocation && !endLocation) {
+                             startLocation = possibleStarts[0];
+                             endLocation = possibleEnds[0];
+                             console.log(`[DEBUG - API ASK] Znaleziono pełną trasę (różne strefy): z ${startLocation.name[lang]} do ${endLocation.name[lang]}`);
+                        }
                     }
                 }
             }
 
             if (startLocation && endLocation) {
+                // Mamy punkt początkowy i końcowy
                 console.log("[DEBUG - API ASK] Tryb nawigacji: z punktu A do punktu B.");
-                const mapPath = path.join(__dirname, 'public', startLocation.map_file);
-                const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
-                const prompt = `Podaj mi wskazówki, jak dojść z ${startLocation.name[lang]} (szczegóły: ${startLocation.details[lang]}) do ${endLocation.name[lang]} (szczegóły: ${endLocation.details[lang]}). Użyj załączonej mapy.`;
-                const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-                conversationStates.delete(sessionId);
-                res.json({
-                    answer: answer.replace(/^INTENCJA:NAWIGACJA: /, ''), 
-                    imageUrl: startLocation.map_file,
-                    action: 'show_navigation_modal'
-                });
-                return;
+
+                if (startLocation.zone === endLocation.zone || endLocation.zone === 'transition_point') {
+                    const mapPath = path.join(__dirname, 'public', startLocation.map_file);
+                    const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
+                    const prompt = `Prowadź z ${startLocation.name[lang]} do ${endLocation.name[lang]}. Szczegóły celu: ${endLocation.details[lang]}. Użyj załączonej mapy.`;
+                    const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
+                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
+                    res.json({
+                        answer: answer.replace(/^INTENCJA:NAWIGACJA: /, ''),
+                        imageUrl: startLocation.map_file,
+                        action: 'show_navigation_modal'
+                    });
+                    return;
+                } else if (startLocation.zone === 'before_security' && endLocation.zone === 'after_security') {
+                    // Z przed kontroli na po kontrolę
+                    const answer = navigationResponses.before_to_after_security[lang](endLocation.name[lang]);
+                    conversationStates.set(sessionId, { isNavigating: true, destination: endLocation, userZone: 'before_security' });
+                    res.json({ answer });
+                    return;
+                } else if (startLocation.zone === 'after_security' && endLocation.zone === 'before_security') {
+                    const answer = navigationResponses.after_to_before_security[lang](endLocation.name[lang]);
+                    conversationStates.delete(sessionId);
+                    res.json({ answer });
+                    return;
+                }
             }
-            
+
             let destinationSingle = locationsData.locations.find(loc => loc.aliases[lang].some(alias => lowerQuestion.includes(alias)));
             if (destinationSingle) {
                 console.log("[DEBUG - API ASK] Tryb nawigacji: tylko cel, oczekiwanie na strefę użytkownika (ustawienie stanu).");
@@ -290,9 +312,9 @@ app.post('/api/ask', async (req, res) => {
                 return;
             }
 
-        } else { 
+        } else {
             console.log("[DEBUG - API ASK] AI zidentyfikowało intencję informacyjną lub nieznaną. Przetwarzanie jako pytanie informacyjne.");
-            conversationStates.delete(sessionId); 
+            conversationStates.delete(sessionId); // Zakończ stan nawigacji, jeśli był
             const model = genAI.getGenerativeModel({ model: "embedding-001" });
             const queryEmbedding = await model.embedContent(question);
             const pineconeIndex = pinecone.index(PINECONE_INDEX_NAME);
@@ -306,7 +328,7 @@ app.post('/api/ask', async (req, res) => {
 
     } catch (error) {
         console.error('[Backend] Krytyczny błąd w /api/ask:', error);
-        conversationStates.delete(sessionId);  
+        conversationStates.delete(sessionId);
         res.status(500).json({ error: 'Wystąpił wewnętrzny błąd serwera.' });
     }
 });
