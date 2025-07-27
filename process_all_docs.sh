@@ -1,4 +1,3 @@
-
 set -e
 
 RAW_DOCS_DIR="./raw_airport_docs" 

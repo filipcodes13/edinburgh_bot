@@ -64,6 +64,25 @@ function fileToGenerativePart(filePath, mimeType) {
     };
 }
 
+const navigationResponses = {
+    request_location: {
+        pl: "Jasne, mogę Cię tam zaprowadzić. Powiedz mi proszę, gdzie teraz jesteś?",
+        en: "Sure, I can take you there. Please tell me, where are you now?"
+    },
+    before_to_after_security: {
+        pl: (destName) => `Twój cel, ${destName}, znajduje się po przejściu kontroli bezpieczeństwa. Najpierw udaj się do strefy kontroli. Gdy ją przejdziesz, zapytaj mnie ponownie, a podam Ci dalsze wskazówki.`,
+        en: (destName) => `Your destination, ${destName}, is located after security control. First, proceed to the security area. Once you've passed through, ask me again, and I'll give you further instructions.`
+    },
+    after_to_before_security: {
+        pl: (destName) => `Wygląda na to, że jesteś już w strefie odlotów. Twój cel, ${destName}, znajduje się w strefie ogólnodostępnej, przed kontrolą bezpieczeństwa. Niestety, ze względów bezpieczeństwa po przejściu kontroli nie można już do niej wrócić.`,
+        en: (destName) => `It seems you are already in the departures area. Your destination, ${destName}, is located in the public area, before security control. Unfortunately, for security reasons, you cannot return to it after passing through security.`
+    },
+    not_understood: {
+        pl: "Nie rozumiem. Proszę, wybierz jedną z opcji.",
+        en: "I don't understand. Please choose one of the options."
+    }
+};
+
 async function getAnswerFromAI(query, chatHistory, context, lang = 'pl', imageParts = []) {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
     const langInstruction = lang === 'en' ? 'Your answer must be in English.' : 'Twoja odpowiedź musi być w języku polskim.';
@@ -72,9 +91,10 @@ async function getAnswerFromAI(query, chatHistory, context, lang = 'pl', imagePa
     const systemInstruction = `Jesteś przyjaznym i pomocnym asystentem AI ✈️ na Lotnisku w Edynburgu (EDI). Twoim zadaniem jest prowadzenie miłej i użytecznej konwersacji. Używaj emoji, aby Twoje odpowiedzi były bardziej przyjazne! ${langInstruction}
 
 **NAJWAŻNIEJSZA ZASADA (ROUTER INTENCJI):**
-Twoim pierwszym zadaniem jest zrozumienie intencji użytkownika.
--   Jeśli pytanie zawiera frazy takie jak "jak dojść", "pokaż drogę", "nawiguj", "trasa z... do...", "how to get", "show me the way", "navigate", to jest to **PROŚBA O NAWIGACJĘ**. W takim przypadku MUSISZ postępować zgodnie z **PROTOKOŁEM NAWIGACJI**.
--   W każdym innym przypadku jest to **PROŚBA O INFORMACJĘ**. W takim przypadku MUSISZ postępować zgodnie z **PROTOKOŁEM INFORMACYJNYM**.
+Twoim pierwszym zadaniem jest zrozumienie intencji użytkownika. Zawsze odpowiadaj, zaczynając od słowa kluczowego intencji, po którym następuje dwukropek i spacja, a następnie Twoja właściwa odpowiedź.
+
+-   Jeśli pytanie zawiera frazy takie jak "jak dojść", "pokaż drogę", "nawiguj", "trasa z... do...", "how to get", "show me the way", "navigate", to jest to **PROŚBA O NAWIGACJĘ**. W takim przypadku zacznij odpowiedź od: \`INTENCJA:NAWIGACJA: \`
+-   W każdym innym przypadku jest to **PROŚBA O INFORMACJĘ**. W takim przypadku zacznij odpowiedź od: \`INTENCJA:INFORMACJA: \`
 
 ---
 **PROTOKÓŁ NAWIGACJI (gdy intencja to NAWIGACJA):**
@@ -95,7 +115,7 @@ Twoim pierwszym zadaniem jest zrozumienie intencji użytkownika.
 -   **BEZ FORMATOWANIA:** Nigdy nie używaj znaków formatowania Markdown, takich jak gwiazdki (*), (**), (***) z wyjątkiem tworzenia linków w formacie [tekst](URL).
 
 ---
-**KONTEKST Z BAZY WIEDZY (Używaj tylko dla PROTOKOŁU INFORMACYJNEGO):**
+**KONTEKST Z BAZY WIEDZY (Używaj tylko dla PROTOKÓŁU INFORMACYJNEGO):**
 ${context}
 ---`;
 
@@ -108,144 +128,185 @@ ${context}
 
 app.post('/api/ask', async (req, res) => {
     const sessionId = req.ip;
-    const conversationState = conversationStates.get(sessionId) || {};
+    let conversationState = conversationStates.get(sessionId) || {};
 
     try {
         const { question, lang, chatHistory } = req.body;
         if (!question) return res.status(400).json({ error: 'Zapytanie nie może być puste.' });
 
         const lowerQuestion = question.toLowerCase();
+        console.log(`[DEBUG - API ASK] Pytanie od użytkownika: "${question}" (język: ${lang})`);
+        console.log(`[DEBUG - API ASK] Konwersacja w stanie (początek):`, conversationState);
 
         const fromKeywords = [' z ', ' od ', ' from '];
         const toKeywords = [' do ', ' na ', ' to '];
 
-        let startLocation = null;
-        let endLocation = null;
-        let toKeywordIndex = -1;
-        let toKeywordUsed = '';
-        toKeywords.forEach(kw => {
-            let index = lowerQuestion.lastIndexOf(kw);
-            if (index > toKeywordIndex) {
-                toKeywordIndex = index;
-                toKeywordUsed = kw;
-            }
-        });
-
-        if (toKeywordIndex !== -1) {
-            const beforeTo = lowerQuestion.substring(0, toKeywordIndex);
-            const afterTo = lowerQuestion.substring(toKeywordIndex + toKeywordUsed.length);
-            let fromKeywordIndex = -1;
-            let fromKeywordUsed = '';
-            fromKeywords.forEach(kw => {
-                let index = beforeTo.lastIndexOf(kw);
-                if (index > fromKeywordIndex) {
-                    fromKeywordIndex = index;
-                    fromKeywordUsed = kw;
-                }
-            });
-
-            if (fromKeywordIndex !== -1) {
-                const startPhrase = beforeTo.substring(fromKeywordIndex + fromKeywordUsed.length).trim();
-                const endPhrase = afterTo.trim();
-                const possibleStarts = locationsData.locations.filter(loc => loc.aliases.some(alias => startPhrase.includes(alias)));
-                const possibleEnds = locationsData.locations.filter(loc => loc.aliases.some(alias => endPhrase.includes(alias)));
-
-                if (possibleStarts.length > 0 && possibleEnds.length > 0) {
-                    for (const start of possibleStarts) {
-                        const matchingEnd = possibleEnds.find(end => end.zone === start.zone);
-                        if (matchingEnd) {
-                            startLocation = start;
-                            endLocation = matchingEnd;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (startLocation && endLocation) {
-            const mapPath = path.join(__dirname, 'public', startLocation.map_file);
-            const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
-            const prompt = `Podaj mi wskazówki, jak dojść z ${startLocation.name} (szczegóły: ${startLocation.details}) do ${endLocation.name} (szczegóły: ${endLocation.details}). Użyj załączonej mapy.`;
-            const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-            conversationStates.delete(sessionId); // Zakończ stan nawigacji
-            res.json({
-                answer: answer,
-                imageUrl: startLocation.map_file,
-                action: 'show_navigation_modal'
-            });
-            return;
-        }
-
-        const destination = locationsData.locations.find(loc => loc.aliases.some(alias => lowerQuestion.includes(alias)));
-
-        if (destination) {
-            conversationStates.set(sessionId, { isNavigating: true, destination: destination, userZone: null });
-            res.json({
-                answer: "Jasne, mogę Cię tam zaprowadzić. Powiedz mi proszę, gdzie teraz jesteś?",
-                action: 'request_location'
-            });
-            return;
-        }
-
-        if (conversationState.isNavigating && !conversationState.userZone) {
+        if (conversationState.isNavigating && conversationState.destination && conversationState.userZone === null) {
+            console.log("[DEBUG - API ASK] Tryb nawigacji: oczekiwanie na strefę użytkownika (kontynuacja).");
             let foundZone = null;
-            for (const loc in locationsData.user_locations) {
-                if (lowerQuestion.includes(loc)) {
-                    foundZone = locationsData.user_locations[loc];
+            console.log(`[DEBUG - USER ZONE] Próba znalezienia strefy dla pytania: "${lowerQuestion}"`);
+            for (const locAlias of Object.keys(locationsData.user_locations)) { 
+                console.log(`[DEBUG - USER ZONE] Sprawdzanie aliasu: "${locAlias}". Czy "${lowerQuestion}" zawiera "${locAlias}"? ${lowerQuestion.includes(locAlias)}`);
+                if (lowerQuestion.includes(locAlias)) {
+                    foundZone = locationsData.user_locations[locAlias];
+                    console.log(`[DEBUG - USER ZONE] Znaleziono pasującą strefę: "${foundZone}" dla aliasu: "${locAlias}"`);
                     break;
                 }
             }
+            console.log(`[DEBUG - USER ZONE] Ostateczna znaleziona strefa: "${foundZone}"`);
+
             if (foundZone) {
                 const userZone = foundZone;
                 const dest = conversationState.destination;
                 const destZone = dest.zone;
+                console.log(`[DEBUG - USER ZONE] Użytkownik jest w: ${userZone}, Cel jest w: ${destZone}`);
 
                 if (userZone === destZone || destZone === 'transition_point') {
+                    console.log("[DEBUG - USER ZONE] Użytkownik jest w tej samej strefie co cel lub w strefie przejściowej.");
                     const mapPath = path.join(__dirname, 'public', dest.map_file);
                     const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
-                    const prompt = `Prowadź z mojej obecnej lokalizacji do celu: ${dest.name}. Szczegóły celu: ${dest.details}. Użyj załączonej mapy.`;
+                    const prompt = `Prowadź z mojej obecnej lokalizacji do celu: ${dest.name[lang]}. Szczegóły celu: ${dest.details[lang]}. Użyj załączonej mapy.`;
                     const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
-                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
+                    conversationStates.delete(sessionId); 
                     res.json({
-                        answer: answer,
+                        answer: answer.replace(/^INTENCJA:NAWIGACJA: /, ''), 
                         imageUrl: dest.map_file,
                         action: 'show_navigation_modal'
                     });
                     return;
                 } else if (userZone === 'before_security' && destZone === 'after_security') {
-                    const answer = `Twój cel, ${dest.name}, znajduje się po przejściu kontroli bezpieczeństwa. Najpierw udaj się do strefy kontroli. Gdy ją przejdziesz, zapytaj mnie ponownie, a podam Ci dalsze wskazówki.`;
-                    conversationStates.set(sessionId, { ...conversationState, userZone: 'before_security' }); // Zapisz, że użytkownik jest przed kontrolą
+                    console.log("[DEBUG - USER ZONE] Użytkownik jest przed kontrolą, cel jest po kontroli.");
+                    const answer = navigationResponses.before_to_after_security[lang](dest.name[lang]);
+                    conversationStates.set(sessionId, { ...conversationState, userZone: 'before_security' }); 
                     res.json({ answer });
                     return;
                 } else if (userZone === 'after_security' && destZone === 'before_security') {
-                    const answer = `Wygląda na to, że jesteś już w strefie odlotów. Twój cel, ${dest.name}, znajduje się w strefie ogólnodostępnej, przed kontrolą bezpieczeństwa. Niestety, ze względów bezpieczeństwa po przejściu kontroli nie można już do niej wrócić.`;
-                    conversationStates.delete(sessionId); // Zakończ stan nawigacji
+                    console.log("[DEBUG - USER ZONE] Użytkownik jest po kontroli, cel jest przed kontrolą.");
+                    const answer = navigationResponses.after_to_before_security[lang](dest.name[lang]);
+                    conversationStates.delete(sessionId); 
                     res.json({ answer });
                     return;
                 }
-            } else {
+                 console.log("[DEBUG - USER ZONE] Logika stref nie pasuje, powrót do pytania o lokalizację.");
+                 res.json({
+                    answer: navigationResponses.not_understood[lang],
+                    action: 'request_location'
+                });
+                return;
+
+            } else { 
+                console.log("[DEBUG - USER ZONE] Nie zrozumiano strefy użytkownika. Ponowne pytanie o lokalizację.");
                 res.json({
-                    answer: "Nie rozumiem. Proszę, wybierz jedną z opcji.",
+                    answer: navigationResponses.not_understood[lang],
                     action: 'request_location'
                 });
                 return;
             }
         }
 
-        conversationStates.delete(sessionId); // Zakończ stan nawigacji, jeśli nie był używany
-        const model = genAI.getGenerativeModel({ model: "embedding-001" });
-        const queryEmbedding = await model.embedContent(question);
-        const pineconeIndex = pinecone.index(PINECONE_INDEX_NAME);
-        const queryResult = await pineconeIndex.query({ vector: queryEmbedding.embedding.values, topK: 5, includeMetadata: true });
-        const contextText = queryResult.matches.length > 0 ? queryResult.matches.map(match => match.metadata.text_chunk).join('\n\n---\n\n') : "Brak informacji w bazie wiedzy na ten temat.";
+        const aiResponseWithIntent = await getAnswerFromAI(question, chatHistory, "", lang);
+        const [intentPrefix, aiAnswerContent] = aiResponseWithIntent.split(/^(INTENCJA:NAWIGACJA:|INTENCJA:INFORMACJA:)\s*/).slice(1);
+        const intent = intentPrefix ? intentPrefix.replace('INTENCJA:', '').replace(':', '').trim() : 'UNKNOWN';
+        const finalAiAnswer = aiAnswerContent || aiResponseWithIntent; 
 
-        const answer = await getAnswerFromAI(question, chatHistory, contextText, lang);
-        res.json({ answer, sourceContext: queryResult.matches.length > 0 ? queryResult.matches[0].metadata : null });
+        console.log(`[DEBUG - API ASK] AI sklasyfikowało intencję jako: ${intent}`);
+
+        if (intent === 'NAWIGACJA') {
+            console.log("[DEBUG - API ASK] AI zidentyfikowało intencję nawigacji.");
+            let startLocation = null;
+            let endLocation = null;
+            let toKeywordIndex = -1;
+            let toKeywordUsed = '';
+            toKeywords.forEach(kw => {
+                let index = lowerQuestion.lastIndexOf(kw);
+                if (index > toKeywordIndex) {
+                    toKeywordIndex = index;
+                    toKeywordUsed = kw;
+                }
+            });
+
+            if (toKeywordIndex !== -1) {
+                const beforeTo = lowerQuestion.substring(0, toKeywordIndex);
+                const afterTo = lowerQuestion.substring(toKeywordIndex + toKeywordUsed.length);
+                let fromKeywordIndex = -1;
+                let fromKeywordUsed = '';
+                fromKeywords.forEach(kw => {
+                    let index = beforeTo.lastIndexOf(kw);
+                    if (index > fromKeywordIndex) {
+                        fromKeywordIndex = index;
+                        fromKeywordUsed = kw;
+                    }
+                });
+
+                if (fromKeywordIndex !== -1) {
+                    const startPhrase = beforeTo.substring(fromKeywordIndex + fromKeywordUsed.length).trim();
+                    const endPhrase = afterTo.trim();
+                    console.log(`[DEBUG - API ASK] Próba dopasowania lokalizacji (pełna trasa): startPhrase="${startPhrase}", endPhrase="${endPhrase}"`);
+                    const possibleStarts = locationsData.locations.filter(loc => loc.aliases[lang].some(alias => startPhrase.includes(alias)));
+                    const possibleEnds = locationsData.locations.filter(loc => loc.aliases[lang].some(alias => endPhrase.includes(alias)));
+                    console.log(`[DEBUG - API ASK] Możliwe początki: ${possibleStarts.map(p => p.name[lang])}, Możliwe cele: ${possibleEnds.map(p => p.name[lang])}`);
+
+                    if (possibleStarts.length > 0 && possibleEnds.length > 0) {
+                        for (const start of possibleStarts) {
+                            const matchingEnd = possibleEnds.find(end => end.zone === start.zone);
+                            if (matchingEnd) {
+                                startLocation = start;
+                                endLocation = matchingEnd;
+                                console.log(`[DEBUG - API ASK] Znaleziono pełną trasę: z ${startLocation.name[lang]} do ${endLocation.name[lang]}`);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (startLocation && endLocation) {
+                console.log("[DEBUG - API ASK] Tryb nawigacji: z punktu A do punktu B.");
+                const mapPath = path.join(__dirname, 'public', startLocation.map_file);
+                const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
+                const prompt = `Podaj mi wskazówki, jak dojść z ${startLocation.name[lang]} (szczegóły: ${startLocation.details[lang]}) do ${endLocation.name[lang]} (szczegóły: ${endLocation.details[lang]}). Użyj załączonej mapy.`;
+                const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
+                conversationStates.delete(sessionId);
+                res.json({
+                    answer: answer.replace(/^INTENCJA:NAWIGACJA: /, ''), 
+                    imageUrl: startLocation.map_file,
+                    action: 'show_navigation_modal'
+                });
+                return;
+            }
+            
+            let destinationSingle = locationsData.locations.find(loc => loc.aliases[lang].some(alias => lowerQuestion.includes(alias)));
+            if (destinationSingle) {
+                console.log("[DEBUG - API ASK] Tryb nawigacji: tylko cel, oczekiwanie na strefę użytkownika (ustawienie stanu).");
+                conversationStates.set(sessionId, { isNavigating: true, destination: destinationSingle, userZone: null });
+                res.json({
+                    answer: navigationResponses.request_location[lang],
+                    action: 'request_location'
+                });
+                return;
+            } else {
+                console.log("[DEBUG - API ASK] AI zidentyfikowało nawigację, ale nie znaleziono celu. Powrót do ogólnej odpowiedzi AI.");
+                res.json({ answer: finalAiAnswer });
+                return;
+            }
+
+        } else { 
+            console.log("[DEBUG - API ASK] AI zidentyfikowało intencję informacyjną lub nieznaną. Przetwarzanie jako pytanie informacyjne.");
+            conversationStates.delete(sessionId); 
+            const model = genAI.getGenerativeModel({ model: "embedding-001" });
+            const queryEmbedding = await model.embedContent(question);
+            const pineconeIndex = pinecone.index(PINECONE_INDEX_NAME);
+            const queryResult = await pineconeIndex.query({ vector: queryEmbedding.embedding.values, topK: 5, includeMetadata: true });
+            const contextText = queryResult.matches.length > 0 ? queryResult.matches.map(match => match.metadata.text_chunk).join('\n\n---\n\n') : "Brak informacji w bazie wiedzy na ten temat.";
+
+            const informationAnswer = await getAnswerFromAI(question, chatHistory, contextText, lang);
+            res.json({ answer: informationAnswer.replace(/^INTENCJA:INFORMACJA: /, ''), sourceContext: queryResult.matches.length > 0 ? queryResult.matches[0].metadata : null });
+            return;
+        }
 
     } catch (error) {
         console.error('[Backend] Krytyczny błąd w /api/ask:', error);
-        conversationStates.delete(sessionId); // Wyczyść stan sesji w razie błędu
+        conversationStates.delete(sessionId);  
         res.status(500).json({ error: 'Wystąpił wewnętrzny błąd serwera.' });
     }
 });
@@ -389,4 +450,4 @@ const updateRates = () => {
 };
 
 updateRates();
-setInterval(updateRates, 24 * 60 * 60 * 1000); 
+setInterval(updateRates, 24 * 60 * 60 * 1000);

@@ -3,23 +3,28 @@
 #include <sstream>
 #include <vector>
 #include <cmath>
+#include <algorithm> 
+#include <cctype>   
 
 int main() {
-    // Wczytaj cały tekst podany na standardowe wejście
     std::string text, line;
     while (std::getline(std::cin, line)) {
         text += line + " ";
     }
 
-    // Policz słowa w tekście
+    // Policz słowa w tekście z ulepszoną dokładnością
     std::stringstream stream(text);
     std::string word;
     int word_count = 0;
     while (stream >> word) {
-        word_count++;
+        word.erase(std::remove_if(word.begin(), word.end(), [](char c){ return std::ispunct(c); }), word.end());
+
+
+        if (!word.empty()) {
+            word_count++;
+        }
     }
 
-    // Oblicz czas czytania (przyjmujemy średnio 200 słów na minutę)
     const double WORDS_PER_MINUTE = 200.0;
     if (word_count > 0) {
         double minutes = static_cast<double>(word_count) / WORDS_PER_MINUTE;

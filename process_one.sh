@@ -1,4 +1,3 @@
-
 if [ -z "$1" ]; then
     echo "BŁĄD: Nie podano nazwy pliku."
     echo "Użycie: ./process_one.sh <twoj-plik.pdf>"

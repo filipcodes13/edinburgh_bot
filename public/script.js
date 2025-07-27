@@ -48,7 +48,11 @@ document.addEventListener('DOMContentLoaded', () => {
         "before_security": { pl: "Jestem przed kontrolą", en: "I'm before security" },
         "after_security": { pl: "Jestem po kontroli", en: "I'm after security" },
         "nav_modal_header": { pl: "Wskazówki Nawigacyjne", en: "Navigation Instructions" },
-        "nav_modal_close": { pl: "Zamknij", en: "Close" }
+        "nav_modal_close": { pl: "Zamknij", en: "Close" },
+        "user_label": { pl: "Ty", en: "You" },
+        "bot_label": { pl: "Asystent", en: "Assistant" },
+        "api_error_message": { pl: "Przepraszam, mam problem z połączeniem. Spróbuj ponownie.", en: "Sorry, I have a problem connecting. Please try again." },
+        "playlist_prompt": { pl: "Oto propozycja playlisty", en: "Here is a playlist suggestion" }
     };
 
     const suggestionChipsData = [
@@ -91,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         chatHistory = [];
         chatWindow.innerHTML = '';
-        appendMessage(translations.welcome_message[currentLang], 'bot-message welcome-message', 'Asystent');
+        appendMessage(translations.welcome_message[currentLang], 'bot-message welcome-message', translations.bot_label[currentLang]);
         displayDefaultSuggestionChips();
         displaySourceContext(null);
     }
@@ -100,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const userQuestion = questionOverride || inputField.value.trim();
         if (!userQuestion) return;
 
-        appendMessage(userQuestion, 'user-message', 'Ty');
+        appendMessage(userQuestion, 'user-message', translations.user_label[currentLang]);
         if (!questionOverride) inputField.value = '';
         
         hideSuggestionChips();
@@ -109,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const wordsInQuestion = lowerCaseQuestion.replace(/[^\w\s]/g, '').split(/\s+/);
         for (const talk of smallTalk) {
             if (talk.triggers.some(trigger => wordsInQuestion.includes(trigger))) {
-                appendMessage(talk.response[currentLang], 'bot-message', 'Asystent');
+                appendMessage(talk.response[currentLang], 'bot-message', translations.bot_label[currentLang]);
                 displayDefaultSuggestionChips();
                 return;
             }
@@ -145,14 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 const answer = `${data.amount} ${data.from.toUpperCase()} = ${data.result.toFixed(2)} ${data.to.toUpperCase()}`;
                 hideTypingIndicator();
-                appendMessage(answer, 'bot-message', 'Asystent');
+                appendMessage(answer, 'bot-message', translations.bot_label[currentLang]);
                 displayDefaultSuggestionChips();
                 displaySourceContext(null);
 
             } catch (error) {
                 hideTypingIndicator();
                 const errorMessage = `Przepraszam, wystąpił błąd: ${error.message}`;
-                appendMessage(errorMessage, 'bot-message', 'Asystent');
+                appendMessage(errorMessage, 'bot-message', translations.bot_label[currentLang]);
             }
         } else if (playlistMatch) {
             const genre = playlistMatch[1].toLowerCase();
@@ -177,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 hideTypingIndicator();
                 const errorMessage = `Przepraszam, wystąpił błąd: ${error.message}`;
-                appendMessage(errorMessage, 'bot-message', 'Asystent');
+                appendMessage(errorMessage, 'bot-message', translations.bot_label[currentLang]);
             }
         } else {
             chatHistory.push({ role: 'user', parts: [{ text: userQuestion }] });
@@ -202,9 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     showNavigationModal(data.imageUrl, data.answer);
                     displayDefaultSuggestionChips();
                 } else {
-                    const responseText = data.answer || "Przepraszam, wystąpił błąd.";
+                    const responseText = data.answer || "Przepraszam, wystąpił błąd."; // Fallback for data.answer
                     chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
-                    appendMessage(responseText, 'bot-message', 'Asystent', data.imageUrl);
+                    appendMessage(responseText, 'bot-message', translations.bot_label[currentLang], data.imageUrl);
                     displaySourceContext(data.sourceContext);
 
                     if (data.action === 'request_location') {
@@ -217,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 hideTypingIndicator();
                 console.error("Błąd API:", error);
-                appendMessage("Przepraszam, mam problem z połączeniem. Spróbuj ponownie.", 'bot-message', 'Asystent');
+                appendMessage(translations.api_error_message[currentLang], 'bot-message', translations.bot_label[currentLang]);
             }
         }
     }
@@ -264,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const playlistContainer = document.createElement('div');
         playlistContainer.className = 'bot-message';
         const header = document.createElement('p');
-        header.innerHTML = `<strong>Asystent:</strong> Oto propozycja playlisty (${genre}):`;
+        header.innerHTML = `<strong>${translations.bot_label[currentLang]}:</strong> ${translations.playlist_prompt[currentLang]} (${genre}):`;
         playlistContainer.appendChild(header);
         tracks.forEach(track => {
             const trackEmbed = document.createElement('div');
