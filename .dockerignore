@@ -1,0 +1,18 @@
+node_modules/
+.env
+/airport_docs/
+/raw_airport_docs/
+*.log
+.npm-debug.log*
+.yarn-debug.log*
+.yarn-error.log*
+Thumbs.debug
+/build/
+/dist/
+.DS_Store
+.git/ # Chociaż Git ignoruje .git, dobrze jest to jawnie określić
+# Pliki binarne C++ i foldery kompilacji docwire, które są budowane wewnątrz kontenera
+cpp_tools/currency_calculator
+cpp_tools/reading_time_calculator
+docwire/build/
+docwire/vcpkg/
