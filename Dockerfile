@@ -11,8 +11,12 @@ RUN apt-get update && apt-get install -y g++ cmake git libboost-all-dev
 COPY package*.json ./
 RUN npm install --only=production
 
-# Skopiuj resztę plików projektu (w tym cały folder docwire)
+# Skopiuj resztę plików projektu (w tym referencje do podmodułów, np. docwire)
 COPY . .
+
+# --- KLUCZOWA ZMIANA: Zaktualizuj podmoduły Git ---
+# To pobierze faktyczną zawartość folderu docwire
+RUN git submodule update --init --recursive
 
 # --- SEKCJA BUDOWANIA DOCWIRE ---
 # Przejdź do folderu docwire, stwórz folder build i zbuduj program
