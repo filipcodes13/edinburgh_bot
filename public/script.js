@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         "header_title": { pl: "Twój Asystent Lotniskowy ✈️", en: "Your Airport Assistant ✈️" },
         "header_subtitle": { pl: "Witaj na lotnisku w Edynburgu! Zapytaj mnie o cokolwiek.", en: "Welcome to Edinburgh Airport! Ask me anything." },
         "chat_header": { pl: "Czat", en: "Chat" },
-        "input_placeholder": { pl: "Wpisz pytanie, np. 'playlista pop'", en: "Type a question, e.g., 'pop playlist'" },
+        "input_placeholder": { pl: "Wpisz pytanie, np. 'playlista jazz'", en: "Type a question, e.g., 'jazz playlist'" },
         "send_button": { pl: "Zapytaj", en: "Ask" },
         "info_header": { pl: "Dodatkowe Informacje", en: "Additional Information" },
         "summarize_button": { pl: "Podsumuj źródło", en: "Summarize Source" },
@@ -108,8 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!questionOverride) inputField.value = '';
         
         hideSuggestionChips();
-        const lowerCaseQuestion = userQuestion.toLowerCase();
         
+        const lowerCaseQuestion = userQuestion.toLowerCase();
         const wordsInQuestion = lowerCaseQuestion.replace(/[^\w\s]/g, '').split(/\s+/);
         for (const talk of smallTalk) {
             if (talk.triggers.some(trigger => wordsInQuestion.includes(trigger))) {
@@ -119,116 +119,58 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        const currencyRegex = /(?:przelicz|ile to|convert|how much is)\s*(\d+(?:[.,]\d+)?)\s*([a-zA-Z]{3})\s*(?:na|to|in)\s*([a-zA-Z]{3})/i;
-        const currencyMatch = userQuestion.replace(',', '.').match(currencyRegex);
-
-        const playlistRegex = /(?:playlista|playlist for|playlist)\s*(pop|rock|chill|dance|hip-hop)/i;
-        const playlistMatch = userQuestion.match(playlistRegex);
-
         showTypingIndicator();
         infoContentDiv.innerHTML = `<p>${translations.thinking_message[currentLang]}</p>`;
         sdkDemos.style.display = 'none';
 
-        if (currencyMatch) {
-            const amount = parseFloat(currencyMatch[1]);
-            const from = currencyMatch[2];
-            const to = currencyMatch[3];
-            
-            try {
-                const response = await fetch('/api/convert', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ amount, from, to })
-                });
+        chatHistory.push({ role: 'user', parts: [{ text: userQuestion }] });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error);
-                }
+        try {
+            const apiResponse = await fetch('/api/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    question: userQuestion, 
+                    lang: currentLang,
+                    chatHistory: chatHistory
+                })
+            });
 
-                const data = await response.json();
-                const answer = `${data.amount} ${data.from.toUpperCase()} = ${data.result.toFixed(2)} ${data.to.toUpperCase()}`;
-                hideTypingIndicator();
-                appendMessage(answer, 'bot-message', translations.bot_label[currentLang]);
+            if (!apiResponse.ok) throw new Error('Błąd odpowiedzi serwera.');
+
+            const data = await apiResponse.json();
+            hideTypingIndicator();
+
+            if (data.action === 'trigger_playlist') {
+                await handlePlaylistRequest(data.genre);
+            } else if (data.action === 'trigger_currency_conversion') {
+                await handleCurrencyRequest(data.amount, data.from, data.to);
+            } else if (data.action === 'show_navigation_modal') {
+                showNavigationModal(data.imageUrl, data.answer);
                 displayDefaultSuggestionChips();
-                displaySourceContext(null);
+            } else {
+                const responseText = data.answer || "Przepraszam, wystąpił błąd.";
+                chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
+                appendMessage(responseText, 'bot-message', translations.bot_label[currentLang], data.imageUrl);
+                displaySourceContext(data.sourceContext);
 
-            } catch (error) {
-                hideTypingIndicator();
-                const errorMessage = `Przepraszam, wystąpił błąd: ${error.message}`;
-                appendMessage(errorMessage, 'bot-message', translations.bot_label[currentLang]);
-            }
-        } else if (playlistMatch) {
-            const genre = playlistMatch[1].toLowerCase();
-            try {
-                const response = await fetch('/api/playlist', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ genre })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.details || errorData.error);
-                }
-
-                const data = await response.json();
-                hideTypingIndicator();
-                appendPlaylist(data.tracks, genre);
-                displayDefaultSuggestionChips();
-                displaySourceContext(null);
-
-            } catch (error) {
-                hideTypingIndicator();
-                const errorMessage = `Przepraszam, wystąpił błąd: ${error.message}`;
-                appendMessage(errorMessage, 'bot-message', translations.bot_label[currentLang]);
-            }
-        } else {
-            chatHistory.push({ role: 'user', parts: [{ text: userQuestion }] });
-
-            try {
-                const apiResponse = await fetch('/api/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        question: userQuestion, 
-                        lang: currentLang,
-                        chatHistory: chatHistory
-                    })
-                });
-
-                if (!apiResponse.ok) throw new Error('Błąd odpowiedzi serwera.');
-
-                const data = await apiResponse.json();
-                hideTypingIndicator();
-
-                if (data.action === 'show_navigation_modal') {
-                    showNavigationModal(data.imageUrl, data.answer);
-                    displayDefaultSuggestionChips();
+                if (data.action === 'request_location') {
+                    displayLocationButtons();
                 } else {
-                    const responseText = data.answer || "Przepraszam, wystąpił błąd."; // Fallback for data.answer
-                    chatHistory.push({ role: 'model', parts: [{ text: responseText }] });
-                    appendMessage(responseText, 'bot-message', translations.bot_label[currentLang], data.imageUrl);
-                    displaySourceContext(data.sourceContext);
-
-                    if (data.action === 'request_location') {
-                        displayLocationButtons();
-                    } else {
-                        displayDefaultSuggestionChips();
-                    }
+                    displayDefaultSuggestionChips();
                 }
-
-            } catch (error) {
-                hideTypingIndicator();
-                console.error("Błąd API:", error);
-                appendMessage(translations.api_error_message[currentLang], 'bot-message', translations.bot_label[currentLang]);
             }
+
+        } catch (error) {
+            hideTypingIndicator();
+            console.error("Błąd API:", error);
+            appendMessage(translations.api_error_message[currentLang], 'bot-message', translations.bot_label[currentLang]);
         }
     }
 
     function parseMarkdownLinks(text) {
         const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-        return text.replace(linkRegex, '<a href="$2" target="_blank">$1</a>');
+        return text.replace(linkRegex, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
     }
 
     function appendMessage(text, className, author, imageUrl = null) {
@@ -369,7 +311,51 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         infoContentDiv.appendChild(resultDiv);
     }
+    
+    async function handlePlaylistRequest(genre) {
+        try {
+            const response = await fetch('/api/playlist', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ genre })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.details || errorData.error);
+            }
+            const data = await response.json();
+            appendPlaylist(data.tracks, genre);
+            displayDefaultSuggestionChips();
+            displaySourceContext(null);
+        } catch (error) {
+            const errorMessage = `Przepraszam, wystąpił błąd przy tworzeniu playlisty: ${error.message}`;
+            appendMessage(errorMessage, 'bot-message', translations.bot_label[currentLang]);
+        }
+    }
 
+    async function handleCurrencyRequest(amount, from, to) {
+        try {
+            const response = await fetch('/api/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount, from, to })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error);
+            }
+            const data = await response.json();
+            const answer = `${data.amount} ${data.from.toUpperCase()} = ${data.result.toFixed(2)} ${data.to.toUpperCase()}`;
+            appendMessage(answer, 'bot-message', translations.bot_label[currentLang]);
+            displayDefaultSuggestionChips();
+            displaySourceContext(null);
+        } catch (error) {
+            const errorMessage = `Przepraszam, wystąpił błąd przy przeliczaniu walut: ${error.message}`;
+            appendMessage(errorMessage, 'bot-message', translations.bot_label[currentLang]);
+        }
+    }
+
+    // Inicjalizacja
     setLanguage(currentLang);
 
     if (sendButton && inputField) {
@@ -395,7 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
+    
     if (summarizeButton) {
         summarizeButton.addEventListener('click', async () => {
             const blockquote = infoContentDiv.querySelector('blockquote');
