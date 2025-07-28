@@ -355,7 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Inicjalizacja
     setLanguage(currentLang);
 
     if (sendButton && inputField) {
