@@ -7,12 +7,15 @@ const axios = require('axios');
 const { Pinecone } = require('@pinecone-database/pinecone');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn } = require('child_process');
+const cookieParser = require('cookie-parser'); // <-- NOWY IMPORT
+const { v4: uuidv4 } = require('uuid'); // <-- NOWY IMPORT
 
 const app = express();
 const port = 8080;
 
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser()); // <-- UŻYJ COOKIE-PARSER
 app.use(express.static(path.join(__dirname, 'public')));
 
 if (!process.env.PINECONE_API_KEY || !process.env.GOOGLE_API_KEY || !process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET || !process.env.EXCHANGERATE_API_KEY) {
@@ -26,6 +29,37 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
 const locationsPath = path.join(__dirname, 'public/locations.json');
 const locationsData = JSON.parse(fs.readFileSync(locationsPath, 'utf-8'));
+
+const conversationStates = new Map();
+
+// NOWA, PROFESJONALNA OBSŁUGA SESJI
+const getSessionId = (req, res) => {
+    let sessionId = req.cookies.session_id;
+    if (!sessionId) {
+        sessionId = uuidv4();
+        res.cookie('session_id', sessionId, { httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }); // Ciasteczko ważne 24h
+    }
+    return sessionId;
+};
+
+const navigationResponses = {
+    request_location: {
+        pl: "Jasne, mogę Cię tam zaprowadzić. Powiedz mi proszę, gdzie teraz jesteś? Na przykład 'jestem przy odprawie' lub 'jestem przy bramce 10'.",
+        en: "Sure, I can take you there. Please tell me, where are you now? For example 'I'm at check-in' or 'I'm at gate 10'."
+    },
+    before_to_after_security: {
+        pl: (destName) => `Twój cel, ${destName}, znajduje się po przejściu kontroli bezpieczeństwa. Najpierw udaj się do strefy kontroli. Gdy ją przejdziesz, zapytaj mnie ponownie, a podam Ci dalsze wskazówki.`,
+        en: (destName) => `Your destination, ${destName}, is located after security control. First, proceed to the security area. Once you've passed through, ask me again, and I'll give you further instructions.`
+    },
+    after_to_before_security: {
+        pl: (destName) => `Wygląda na to, że jesteś już w strefie odlotów. Twój cel, ${destName}, znajduje się w strefie ogólnodostępnej, przed kontrolą bezpieczeństwa. Niestety, ze względów bezpieczeństwa po przejściu kontroli nie można już do niej wrócić.`,
+        en: (destName) => `It seems you are already in the departures area. Your destination, ${destName}, is located in the public area, before security control. Unfortunately, for security reasons, you cannot return to it after passing through security.`
+    },
+    not_understood: {
+        pl: "Nie rozumiem. Proszę, wybierz jedną z opcji.",
+        en: "I don't understand. Please choose one of the options."
+    }
+};
 
 let spotifyToken = null;
 let tokenExpiryTime = 0;
@@ -43,7 +77,6 @@ async function getSpotifyToken() {
         tokenExpiryTime = Date.now() + (response.data.expires_in - 300) * 1000;
         return spotifyToken;
     } catch (error) {
-        console.error("Błąd podczas pobierania tokenu Spotify:", error.response ? error.response.data : error.message);
         throw new Error("Nie można uzyskać tokenu od Spotify.");
     }
 }
@@ -69,13 +102,13 @@ async function getAnswerFromAI(query, chatHistory, context, lang = 'pl', imagePa
 **NAJWAŻNIEJSZA ZASADA (ROUTER INTENCJI):**
 Twoim pierwszym zadaniem jest zrozumienie intencji użytkownika. ZAWSZE obsługuj tylko JEDNĄ intencję na raz. Jeśli użytkownik prosi o kilka rzeczy naraz, obsłuż pierwszą z nich i grzecznie poinformuj, aby o drugą zapytał w osobnej wiadomości. Zawsze odpowiadaj, zaczynając od słowa kluczowego intencji, po którym następuje dwukropek i spacja.
 
--   Jeśli pytanie jest prośbą o **playlistę muzyczną** (np. "playlista rock", "muzyka do relaksu", "znajdź piosenki"), ZAWSZE zacznij odpowiedź od: \`INTENCJA:PLAYLISTA: \`. Po dwukropku podaj tylko JEDEN gatunek w języku angielskim, korzystając z poniższego słownika.
--   Jeśli pytanie dotyczy **przeliczenia walut** (np. "ile to 100 EUR", "pokaż mi kurs dolara"), ZAWSZE zacznij odpowiedź od: \`INTENCJA:WALUTA: \`. Po dwukropku podaj obiekt JSON z kluczami "amount", "from", "to". Użyj słownika walut.
--   Jeśli pytanie dotyczy **wskazówek jak dotrzeć do FIZYCZNEJ LOKALIZACJI na lotnisku** (np. "jak dojść do", "pokaż drogę do", "gdzie jest toaleta", "znajdź bramkę 12"), zacznij odpowiedź od: \`INTENCJA:NAWIGACJA: \`. WAŻNE: Prośby o muzykę, waluty lub niematerialne informacje NIE SĄ nawigacją.
+-   Jeśli pytanie jest prośbą o **playlistę muzyczną**, ZAWSZE zacznij odpowiedź od: \`INTENCJA:PLAYLISTA: \`. Po dwukropku podaj tylko JEDEN gatunek w języku angielskim, korzystając z poniższego słownika.
+-   Jeśli pytanie dotyczy **przeliczenia walut**, ZAWSZE zacznij odpowiedź od: \`INTENCJA:WALUTA: \`. Po dwukropku podaj obiekt JSON z kluczami "amount", "from", "to". Użyj słownika walut.
+-   Jeśli pytanie dotyczy **wskazówek jak dotrzeć do FIZYCZNEJ LOKALIZACJI**, zacznij odpowiedź od: \`INTENCJA:NAWIGACJA: \`.
 -   W każdym innym przypadku jest to **PROŚBA O INFORMACJĘ**. Zacznij odpowiedź od: \`INTENCJA:INFORMACJA: \`
 
 ---
-**SŁOWNIK PLAYLIST (mapuj zapytanie użytkownika na jeden z tych gatunków po angielsku):**
+**SŁOWNIK PLAYLIST:**
 -   **Pop:** pop, popularna, hity, przeboje, radio
 -   **Rock:** rock, rockowa, rock and roll, classic rock, hard rock
 -   **Hip-Hop:** hip-hop, hip hop, rap
@@ -83,20 +116,8 @@ Twoim pierwszym zadaniem jest zrozumienie intencji użytkownika. ZAWSZE obsługu
 -   **Jazz:** jazz, jazzowa
 -   **Classical:** klasyczna, poważna, classical
 -   **R-n-B:** r&b, soul, rhythm and blues
--   **Reggae:** reggae
--   **Metal:** metal, heavy metal
--   **Country:** country
--   **Blues:** blues
--   **Folk:** folk, folkowa
--   **Indie:** indie, alternatywna, alternative
 -   **Ambient:** ambient, relaksacyjna, do snu, do latania, relaxing, chill, chillout, do nauki, study
--   **Funk:** funk
--   **Disco:** disco
--   **Latin:** latynoska, latin
--   **K-Pop:** k-pop, kpop
--   **Soundtrack:** filmowa, z filmów, z gier, movie, game, soundtrack
 -   **80s:** lata 80, 80s
--   **90s:** lata 90, 90s
 -   **Workout:** do ćwiczeń, na siłownię, do biegania, workout, fitness, running
 
 ---
@@ -134,21 +155,58 @@ ${context}
 }
 
 app.post('/api/ask', async (req, res) => {
+    const sessionId = getSessionId(req, res); // <-- UŻYJ NOWEJ FUNKCJI
+    let conversationState = conversationStates.get(sessionId) || {};
+
     try {
         const { question, lang, chatHistory } = req.body;
         if (!question) return res.status(400).json({ error: 'Zapytanie nie może być puste.' });
 
+        const lowerQuestion = question.toLowerCase();
+
+        if (conversationState.isNavigating) {
+            let foundZone = null;
+            for (const locAlias of Object.keys(locationsData.user_locations)) {
+                if (lowerQuestion.includes(locAlias)) {
+                    foundZone = locationsData.user_locations[locAlias];
+                    break;
+                }
+            }
+
+            if (foundZone) {
+                const userZone = foundZone;
+                const dest = conversationState.destination;
+                
+                if (userZone === dest.zone || dest.zone === 'transition_point') {
+                    const mapPath = path.join(__dirname, 'public', dest.map_file);
+                    const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
+                    const prompt = `Prowadź z mojej obecnej lokalizacji ("${question}") do celu: ${dest.name[lang]}. Użyj załączonej mapy.`;
+                    const answer = await getAnswerFromAI(prompt, chatHistory, "", lang, imageParts);
+                    conversationStates.delete(sessionId);
+                    return res.json({
+                        answer: answer.replace(/^(INTENCJA:NAWIGACJA|INTENT:NAVIGATION):\s*/, ''),
+                        imageUrl: dest.map_file,
+                        action: 'show_navigation_modal'
+                    });
+                } else if (userZone === 'before_security' && dest.zone === 'after_security') {
+                    conversationStates.delete(sessionId);
+                    return res.json({ answer: navigationResponses.before_to_after_security[lang](dest.name[lang]) });
+                } else if (userZone === 'after_security' && dest.zone === 'before_security') {
+                    conversationStates.delete(sessionId);
+                    return res.json({ answer: navigationResponses.after_to_before_security[lang](dest.name[lang]) });
+                }
+            } else {
+                 conversationStates.delete(sessionId);
+            }
+        }
+        
         const aiResponseWithIntent = await getAnswerFromAI(question, chatHistory, "", lang);
         
-        console.log('--- SUROWA ODPOWIEDŹ Z AI ---');
-        console.log(aiResponseWithIntent);
-        console.log('---------------------------');
-
         const intentMatch = aiResponseWithIntent.match(/^(INTENCJA|INTENT):(\w+):\s*(.*)/s);
         const intent = intentMatch ? intentMatch[2].toUpperCase() : 'INFORMACJA';
         const content = intentMatch ? intentMatch[3] : aiResponseWithIntent;
 
-        console.log(`[DEBUG] Wykryta intencja: ${intent}`);
+        console.log(`[DEBUG] Sesja: ${sessionId}, Intencja: ${intent}`);
 
         if (intent === 'PLAYLISTA' || intent === 'PLAYLIST') {
             return res.json({ action: 'trigger_playlist', genre: content });
@@ -162,14 +220,19 @@ app.post('/api/ask', async (req, res) => {
         }
         
         if (intent === 'NAWIGACJA' || intent === 'NAVIGATION') {
-            const lowerQuestion = question.toLowerCase();
-            let mapFile = 'images/mapa_przed_kontrola.jpg';
+            let destination = locationsData.locations.find(loc => 
+                loc.aliases[lang].some(alias => lowerQuestion.includes(alias))
+            );
 
-            const afterSecurityKeywords = ['gate', 'bramka', 'lounge', 'salonik', 'duty free', 'boots', 'burger king', 'accessorize', 'barburrito', 'brewdog', 'caffe nero', 'heritage of scotland', 'jd sports', 'pret a manger', 'starbucks', 'sunglass hut'];
-            if (afterSecurityKeywords.some(kw => lowerQuestion.includes(kw))) {
-                mapFile = 'images/mapa_po_kontroli.jpg';
+            if (destination) {
+                conversationStates.set(sessionId, { isNavigating: true, destination: destination });
+                return res.json({
+                    answer: navigationResponses.request_location[lang],
+                    action: 'request_location'
+                });
             }
-
+            
+            const mapFile = lowerQuestion.includes('gate') || lowerQuestion.includes('bramki') ? 'images/mapa_po_kontroli.jpg' : 'images/mapa_przed_kontrola.jpg';
             const mapPath = path.join(__dirname, 'public', mapFile);
             const imageParts = [fileToGenerativePart(mapPath, "image/jpeg")];
             const navigationAnswer = await getAnswerFromAI(question, chatHistory, "", lang, imageParts);
